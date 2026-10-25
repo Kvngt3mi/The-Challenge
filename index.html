@@ -45,14 +45,31 @@ input,select,textarea{width:100%;box-sizing:border-box;padding:11px;border:1px s
 .risk{border-width:2px;font-weight:600}.risk.dn{border-color:var(--dn);color:var(--dn)}.risk.am{border-color:#d99a1c;color:#b97f0c}
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.7);overflow:auto;padding:calc(16px + env(safe-area-inset-top,0px)) 16px 24px;z-index:20}
 #modal .in{max-width:420px;margin:0 auto}
-.card{background:#10241d;color:#eef5f1;border-radius:16px;padding:22px;font-family:Figtree,system-ui,sans-serif}
-.card .t{font:700 1rem 'Bricolage Grotesque',Figtree,sans-serif;color:#7fe3bd}
-.card .s{color:#9bb5aa;font-size:.85rem}
-.card .big{font-size:2.6rem;margin:14px 0 2px;color:#fff}
-.card .g{color:#4fdc9b}.card .r{color:#ff7a66}
-.card .tr{border-color:#24433a}
-.card .bar{background:#24433a}
-.card .num{color:#fff}
+.pc{width:344px;box-sizing:border-box;margin:0 auto;padding:22px 22px 18px;color:#fff;font-family:Figtree,system-ui,sans-serif;position:relative;overflow:hidden;background:linear-gradient(165deg,#0a4a2f 0%,#06301f 55%,#04180f 100%)}
+.pc .wm{position:absolute;right:-14px;top:64px;font:800 250px/1 'Bricolage Grotesque',sans-serif;color:rgba(255,255,255,.05)}
+.pc .top{display:flex;justify-content:space-between;align-items:center;gap:8px;position:relative}
+.pc .brand{font:700 .68rem 'Bricolage Grotesque',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#f2c14e}
+.pc .pill{background:#f2c14e;color:#052a1a;font:800 .72rem 'Bricolage Grotesque',sans-serif;padding:5px 10px;border-radius:99px;letter-spacing:.06em;white-space:nowrap}
+.pc .dt{color:#9fc7b3;font-size:.8rem;margin-top:6px;position:relative}
+.pc .lab{color:#9fc7b3;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;margin-top:20px;position:relative}
+.pc .hero{font:800 3rem/1.04 'Bricolage Grotesque',sans-serif;margin:4px 0 2px;letter-spacing:-.02em;position:relative}
+.pc .g{color:#6ef2a8}.pc .r{color:#ff8a76}
+.pc .sub{font-size:.95rem;font-weight:600;position:relative}
+.pc .chart{display:block;margin:14px -4px 4px;position:relative}
+.pc .tk{background:rgba(255,255,255,.08);border-radius:12px;padding:4px 12px;margin-top:10px;position:relative}
+.pc .tk>div{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-top:1px dashed rgba(255,255,255,.2);font-size:.88rem}
+.pc .tk>div:first-child{border-top:0}
+.pc .chip{display:inline-block;font:700 .6rem 'Bricolage Grotesque',sans-serif;letter-spacing:.08em;padding:2px 6px;border-radius:5px;background:rgba(255,255,255,.15);margin-left:6px;vertical-align:middle}
+.pc .st{display:flex;gap:8px;margin-top:12px;position:relative}
+.pc .st>div{flex:1;background:rgba(255,255,255,.08);border-radius:12px;padding:10px 6px;text-align:center}
+.pc .st b{display:block;font:800 .98rem 'Bricolage Grotesque',sans-serif}
+.pc .st span{font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:#9fc7b3}
+.pc .pg{margin-top:14px;position:relative}
+.pc .rw{display:flex;justify-content:space-between;font-size:.78rem;color:#cfe6da;margin-bottom:5px}
+.pc .trk{height:10px;border-radius:6px;background:rgba(255,255,255,.16);overflow:hidden}
+.pc .trk i{display:block;height:100%;border-radius:6px}
+.pc .ft{display:flex;justify-content:space-between;gap:8px;margin-top:16px;padding-top:10px;border-top:1px solid rgba(255,255,255,.16);font-size:.7rem;color:#9fc7b3;position:relative}
+#modal{padding-left:8px;padding-right:8px}#cardwrap{overflow-x:auto}
 </style></head><body><main>
 <h1>Challenge tracker</h1><div id="pb"></div>
 <nav id="nav"></nav>
@@ -124,41 +141,44 @@ function delTrade(id){if(!confirm('Delete this trade?'))return;S.trades=S.trades
 function restore(){try{const o=JSON.parse($('bk').value);if(!o.cfg||!Array.isArray(o.trades))throw 0;S=o;save();admin();settings();overview()}catch(e){alert('That backup text is not valid.')}}
 function settings(){const c=S.cfg;const f=(id,l,v,t='number')=>`<label for="${id}">${l}</label><input id="${id}" type="${t}" value="${v}">`;
 $('st').innerHTML=`<div class="sec"><b>Challenge rules</b><p class="mut">Set these to match the account rules on NairaTrader.</p>
-${f('c1','Account size (₦)',c.size)}${f('c2','Total withdrawal target (₦)',c.target)}${f('c3','Profit split (%)',c.split)}${f('c4','Maximum loss (% of starting balance)',c.maxLoss)}${f('c5','Challenge start date',c.start,'date')}${f('c6','Challenge length (days)',c.days)}
+${f('c1','Account size (₦)',c.size)}${f('c2','Total withdrawal target (₦)',c.target)}${f('c3','Profit split (%)',c.split)}${f('c4','Maximum loss (% of starting balance)',c.maxLoss)}${f('c5','Challenge start date',c.start,'date')}${f('c6','Challenge length (days)',c.days)}${f('c7','Challenge name shown on cards',c.name||'','text')}${f('c8','Link shown on cards (optional)',c.link||'','text')}
 <div class="acts"><button class="btn" onclick="saveCfg()">Save rules</button></div></div>`}
-function saveCfg(){const g=i=>parseFloat($(i).value);S.cfg={size:g('c1')||1e6,target:g('c2')||3e6,split:g('c3')||100,maxLoss:g('c4')||20,start:$('c5').value,days:g('c6')||0};save();overview();tab('ov')}
+function saveCfg(){const g=i=>parseFloat($(i).value);S.cfg={size:g('c1')||1e6,target:g('c2')||3e6,split:g('c3')||100,maxLoss:g('c4')||20,start:$('c5').value,days:g('c6')||0,name:$('c7').value.trim(),link:$('c8').value.trim()};save();overview();tab('ov')}
 function nav(){const T=[['ov','Overview'],['cl','Calendar']];if(ADMIN)T.push(['ad','Add trades'],['st','Settings']);$('nav').innerHTML=T.map(a=>`<button data-t="${a[0]}">${a[1]}</button>`).join('');$('nav').querySelectorAll('button').forEach(b=>b.onclick=()=>tab(b.dataset.t))}
 function tab(t){if(!ADMIN&&(t==='ad'||t==='st'))t='ov';['ov','cl','ad','st'].forEach(i=>$(i).classList.toggle('hide',i!==t));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
 try{sessionStorage.setItem('ch_tab',t)}catch(e){}
 if(t==='ad')admin();if(t==='st')settings();if(t==='ov')overview();if(t==='cl')calendar();window.scrollTo(0,0)}
 let TXT='',FN='challenge';
-function openCard(kind,ix){const s=stats(),c=s.c;let h,sub;
-if(kind==='day'){const x=s.dl.find(y=>y.d===selDay);if(!x){alert('Add a trade first.');return}
-const n=dayNo(s,x.d);sub=`${c.days&&n>0?'Day '+n+' of '+c.days+', ':''}${fd(x.d)}`;
-h=`<div class="s">Day result</div><div class="big ${x.p>=0?'g':'r'}">${P(x.p)}</div>
-${x.t.map(t=>`<div class="tr"><span>${esc(t.pair)} ${t.side}</span><b class="${t.pl>=0?'g':'r'}">${P(t.pl)}</b></div>`).join('')}
-<div class="tr"><span class="s">Balance</span><b class="num">${N(x.bal)}</b></div>
-<div class="tr"><span class="s">Total profit</span><b class="${s.pl>=0?'g':'r'}">${P(x.bal-c.size)}</b></div>
-<div class="tr"><span class="s">Room above loss limit</span><b class="num">${N(Math.max(0,x.bal-s.floor))}</b></div>`;
-TXT=`Challenge ${sub}: ${P(x.p)}. Balance ${N(x.bal)}, total profit ${P(x.bal-c.size)}.`}
-else if(kind==='ms'){const m=mstones(s)[ix];if(!m)return;sub=fd(m.d);
-h=`<div class="s">Milestone unlocked</div><div class="big g" style="font-size:2rem">${esc(m.t)}</div>
-<div class="tr"><span class="s">Balance</span><b class="num">${N(m.bal)}</b></div><div class="tr"><span class="s">Total profit</span><b class="g">${P(m.bal-c.size)}</b></div>`;
+const cname=()=>S.cfg.name||'Trading challenge';
+function pcurve(p,up){if(p.length<2)p=[p[0]||0,p[0]||0];const w=300,h=96,mn=Math.min(...p),mx=Math.max(...p),r=(mx-mn)||1,xy=p.map((v,i)=>[8+i/(p.length-1)*(w-16),h-12-(v-mn)/r*(h-28)]),l=xy.map(a=>a[0].toFixed(1)+','+a[1].toFixed(1)).join(' '),e=xy[xy.length-1],col=up?'#6ef2a8':'#ff8a76';
+return`<svg class="chart" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}"><defs><linearGradient id="gf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".35"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs><polygon points="8,${h} ${l} ${w-8},${h}" fill="url(#gf)"/><polyline points="${l}" fill="none" stroke="${col}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${e[0].toFixed(1)}" cy="${e[1].toFixed(1)}" r="5" fill="#fff" stroke="${col}" stroke-width="3"/></svg>`}
+function pcHead(sub,pill){return`<div class="wm">\u20a6</div><div class="top"><div class="brand">${esc(cname())}</div><div class="pill">${pill}</div></div><div class="dt">${sub}</div>`}
+function pcProg(s,bal){const c=s.c,pay=Math.max(0,bal-c.size)*c.split/100,pp=Math.min(100,pay/c.target*100),room=Math.max(0,bal-s.floor),used=Math.max(0,(c.size-bal)/(c.size-s.floor))*100;
+return`<div class="pg"><div class="rw"><span>Road to ${N(c.target)}</span><b>${pp.toFixed(0)}%</b></div><div class="trk"><i style="width:${pp}%;background:linear-gradient(90deg,#f2c14e,#ffe08a)"></i></div></div><div class="pg"><div class="rw"><span>Loss limit room</span><b>${N(room)}</b></div><div class="trk"><i style="width:${Math.max(0,100-used)}%;background:${used>70?'#ff8a76':'#6ef2a8'}"></i></div></div>`}
+function pcFoot(){const l=S.cfg.link;return`<div class="ft"><span>${l?esc(l):'Live challenge tracker'}</span><span>${S.trades.length} trades logged</span></div>`}
+function openCard(kind,ix){const s=stats(),c=s.c,st=(v,l)=>`<div><b>${v}</b><span>${l}</span></div>`;let h,sub;
+if(kind==='day'){const i=s.dl.findIndex(y=>y.d===selDay),x=s.dl[i];if(!x){alert('Add a trade first.');return}
+const n=dayNo(s,x.d),pts=[c.size].concat(s.dl.slice(0,i+1).map(y=>y.bal)),w=x.t.filter(t=>t.pl>0).length,prev=x.bal-x.p,up=x.p>=0;
+sub=c.days&&n>0?`Day ${n} of ${c.days}, ${fd(x.d)}`:fd(x.d);
+h=pcHead(fd(x.d),c.days&&n>0?`DAY ${n}/${c.days}`:`DAY ${i+1}`)+`<div class="lab">Day result</div><div class="hero ${up?'g':'r'}">${P(x.p)}</div><div class="sub ${up?'g':'r'}">${prev?(x.p/prev*100).toFixed(2):'0.00'}% on the account</div>${pcurve(pts,up)}
+<div class="tk">${x.t.map(t=>`<div><span>${esc(t.pair)}<span class="chip">${t.side.toUpperCase()}</span>${t.tag?`<span class="chip">${esc(t.tag)}</span>`:''}</span><b class="${t.pl>=0?'g':'r'}">${P(t.pl)}</b></div>`).join('')}</div>
+<div class="st">${st(N(x.bal),'Balance')}${st(P(x.bal-c.size),'Total profit')}${st(w+'/'+x.t.length,'Wins')}</div>${pcProg(s,x.bal)}${pcFoot()}`;
+TXT=`${cname()}, ${sub}: ${P(x.p)}. Balance ${N(x.bal)}, total profit ${P(x.bal-c.size)}.`}
+else if(kind==='ms'){const m=mstones(s)[ix];if(!m)return;sub=fd(m.d);const pts=[c.size].concat(s.dl.filter(y=>y.d<=m.d).map(y=>y.bal));
+h=pcHead(fd(m.d),'MILESTONE')+`<div class="lab">Unlocked</div><div class="hero g" style="font-size:2rem;margin-top:10px">\ud83c\udfc6 ${esc(m.t).replace(/\+\u20a6/g,'+\u2060\u20a6')}</div>${pcurve(pts,true)}
+<div class="st">${st(N(m.bal),'Balance')}${st(P(m.bal-c.size),'Total profit')}${st(s.dl.filter(y=>y.d<=m.d).length,'Days traded')}</div>${pcProg(s,m.bal)}${pcFoot()}`;
 TXT=`Milestone unlocked: ${m.t} (${fd(m.d)}). Balance ${N(m.bal)}.`}
-else{sub=`Overall after ${s.dl.length} trading day${s.dl.length===1?'':'s'}`;
-h=`<div class="s">Account balance</div><div class="big">${N(s.bal)}</div><div class="${s.pl>=0?'g':'r'}">${P(s.pl)} (${(s.pl/c.size*100).toFixed(2)}%)</div>${curve(s.pts,'#4fdc9b')}
-<div class="tr" style="margin-top:12px"><span class="s">Win rate</span><b class="num">${s.wr}% of ${s.t.length} trades</b></div><div class="tr"><span class="s">Green streak</span><b class="num">${s.streak} day${s.streak===1?'':'s'}</b></div>
-<div class="tr"><span class="s">Best / worst day</span><b class="num">${P(s.best)} / ${P(s.worst)}</b></div>
-<div style="margin-top:14px"><div class="row"><span class="s">Withdrawal progress</span><b class="num">${N(s.pay)} of ${N(c.target)}</b></div>${bar(s.pay/c.target*100,'#4fdc9b')}</div>
-<div style="margin-top:10px"><div class="row"><span class="s">Loss limit used</span><b class="num">${Math.round(s.used)}%</b></div>${bar(s.used,s.used>70?'#ff7a66':'#7fe3bd')}</div>`;
-TXT=`Challenge overall: balance ${N(s.bal)}, profit ${P(s.pl)} (${(s.pl/c.size*100).toFixed(2)}%), win rate ${s.wr}%.`}
-$('cardwrap').innerHTML=`<div class="card" id="card"><div class="t">Naira trading challenge</div><div class="s">${sub}</div>${h}</div>`;
-FN=kind==='day'?'challenge-day-'+selDay:'challenge-'+kind+'-'+today();$('fl').innerHTML='';$('cap').value=TXT;FACTS=TXT+' Current green-day streak: '+s.streak+'.';$('txt').href='https://wa.me/?text='+encodeURIComponent(TXT);$('modal').classList.remove('hide')}
+else{sub=`Overall after ${s.dl.length} trading day${s.dl.length===1?'':'s'}`;const nd=c.start?Math.floor((D(today())-D(c.start))/864e5)+1:0,up=s.pl>=0;
+h=pcHead(sub,nd>0&&c.days?`DAY ${Math.min(nd,c.days)}/${c.days}`:'OVERALL')+`<div class="lab">Account balance</div><div class="hero">${N(s.bal)}</div><div class="sub ${up?'g':'r'}">${P(s.pl)} (${(s.pl/c.size*100).toFixed(2)}%)</div>${pcurve(s.pts,up)}
+<div class="st">${st(s.wr+'%','Win rate')}${st(s.streak?s.streak+' \ud83d\udd25':'0','Streak')}${st(P(s.best),'Best day')}</div>${pcProg(s,s.bal)}${pcFoot()}`;
+TXT=`${cname()}, overall: balance ${N(s.bal)}, profit ${P(s.pl)} (${(s.pl/c.size*100).toFixed(2)}%), win rate ${s.wr}%.`}
+$('cardwrap').innerHTML=`<div class="pc" id="card">${h}</div>`;
+FN=kind==='day'?'challenge-day-'+selDay:'challenge-'+kind+'-'+today();$('fl').innerHTML='';$('cap').value=TXT;FACTS=TXT+' Current green-day streak: '+s.streak+'.';if($('capbox'))$('capbox').style.display=(typeof SMP!=='undefined'&&SMP)?'flex':'none';$('txt').href='https://wa.me/?text='+encodeURIComponent(TXT);$('modal').classList.remove('hide')}
 const toBlob=(cv,t,q)=>new Promise(r=>cv.toBlob(r,t,q));
 async function shareCard(){const want=['jpg','pdf','png'].filter(k=>$('f_'+k).checked);
 if(!want.length){alert('Pick at least one file type.');return}
 const b=$('shbtn');b.disabled=true;b.textContent='Preparing…';let cv;
-try{cv=await html2canvas($('card'),{scale:2,backgroundColor:'#10241d'})}catch(e){}
+try{cv=await html2canvas($('card'),{scale:2,backgroundColor:'#04180f'})}catch(e){}
 if(!cv){b.disabled=false;b.textContent='Share';alert('Could not make the files. Use Send text only instead.');return}
 const files=[];
 if(want.includes('jpg'))files.push(new File([await toBlob(cv,'image/jpeg',.92)],FN+'.jpg',{type:'image/jpeg'}));
