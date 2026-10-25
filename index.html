@@ -79,7 +79,7 @@ input,select,textarea{width:100%;box-sizing:border-box;padding:11px;border:1px s
 <div class="acts"><button class="btn" id="shbtn" onclick="shareCard()">Share</button><a class="btn alt" id="txt" target="_blank" rel="noopener" style="color:#fff;border-color:#fff">Send text only</a><button class="btn alt" style="color:#fff;border-color:#fff" onclick="$('modal').classList.add('hide')">Close</button></div></div></div>
 <script>
 let S={cfg:{size:1000000,target:3000000,split:70,maxLoss:20,start:'',days:30},trades:[],rev:0},ADMIN=false,BASE=0;
-try{if(location.hash==='#admin')localStorage.setItem('ch_admin','1');ADMIN=localStorage.getItem('ch_admin')==='1'}catch(e){ADMIN=location.hash==='#admin'}
+const WANT=location.hash==='#admin';try{localStorage.removeItem('ch_admin')}catch(e){}
 const save=()=>{S.rev=Math.max(S.rev||0,BASE)+1;try{localStorage.setItem('ch_draft',JSON.stringify(S))}catch(e){alert('This browser could not keep a draft. Download data.json now to be safe.')}pubbar()};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -113,7 +113,7 @@ $('ov').innerHTML=`${riskBar(s)}<div class="sec"><div class="lb">Account balance
 <div class="mut">Account breaks below ${N(s.floor)} (${c.maxLoss}% of ${N(c.size)})</div></div>
 ${pace(s)}<div class="sec grid"><div><div class="lb">Trades</div><div class="num">${s.t.length}</div></div><div><div class="lb">Win rate</div><div class="num">${s.wr}%</div></div>
 <div><div class="lb">Days traded</div><div class="num">${s.dl.length}${c.days?' / '+c.days:''}</div></div><div><div class="lb">Best day</div><div class="num up">${P(s.best)}</div></div>
-<div><div class="lb">Worst day</div><div class="num dn">${P(s.worst)}</div></div><div><div class="lb">Green streak</div><div class="num">${s.streak} day${s.streak===1?'':'s'}</div></div></div>${insights(s)}${milestones(s)}
+<div><div class="lb">Worst day</div><div class="num ${s.worst>=0?'up':'dn'}">${P(s.worst)}</div></div><div><div class="lb">Green streak</div><div class="num">${s.streak} day${s.streak===1?'':'s'}</div></div></div>${insights(s)}${milestones(s)}
 <div class="sec"><b>Share to the group</b><label for="sd">Day for the daily report</label>
 <select id="sd" onchange="selDay=this.value">${s.dl.map(x=>`<option value="${x.d}" ${x.d===selDay?'selected':''}>${fd(x.d)}</option>`).join('')||'<option value="">No trades yet</option>'}</select>
 <div class="acts"><button class="btn" onclick="openCard('day')">Daily report</button><button class="btn alt" onclick="openCard('all')">Overall report</button></div></div>
@@ -141,9 +141,11 @@ function delTrade(id){if(!confirm('Delete this trade?'))return;S.trades=S.trades
 function restore(){try{const o=JSON.parse($('bk').value);if(!o.cfg||!Array.isArray(o.trades))throw 0;S=o;save();admin();settings();overview()}catch(e){alert('That backup text is not valid.')}}
 function settings(){const c=S.cfg;const f=(id,l,v,t='number')=>`<label for="${id}">${l}</label><input id="${id}" type="${t}" value="${v}">`;
 $('st').innerHTML=`<div class="sec"><b>Challenge rules</b><p class="mut">Set these to match the account rules on NairaTrader.</p>
-${f('c1','Account size (₦)',c.size)}${f('c2','Total withdrawal target (₦)',c.target)}${f('c3','Profit split (%)',c.split)}${f('c4','Maximum loss (% of starting balance)',c.maxLoss)}${f('c5','Challenge start date',c.start,'date')}${f('c6','Challenge length (days)',c.days)}${f('c7','Challenge name shown on cards',c.name||'','text')}${f('c8','Link shown on cards (optional)',c.link||'','text')}
+${f('c1','Account size (₦)',c.size)}${f('c2','Total withdrawal target (₦)',c.target)}${f('c3','Profit split (%)',c.split)}${f('c4','Maximum loss (% of starting balance)',c.maxLoss)}${f('c5','Challenge start date',c.start,'date')}${f('c6','Challenge length (days)',c.days)}${f('c7','Challenge name shown on cards',c.name||'','text')}${f('c8','Link shown on cards (optional)',c.link||'','text')}${f('c9',c.pw?'Change admin password (leave empty to keep the current one)':'Set an admin password','','password')}
 <div class="acts"><button class="btn" onclick="saveCfg()">Save rules</button></div></div>`}
-function saveCfg(){const g=i=>parseFloat($(i).value);S.cfg={size:g('c1')||1e6,target:g('c2')||3e6,split:g('c3')||100,maxLoss:g('c4')||20,start:$('c5').value,days:g('c6')||0,name:$('c7').value.trim(),link:$('c8').value.trim()};save();overview();tab('ov')}
+async function saveCfg(){const g=i=>parseFloat($(i).value),o=S.cfg;S.cfg={size:g('c1')||1e6,target:g('c2')||3e6,split:g('c3')||100,maxLoss:g('c4')||20,start:$('c5').value,days:g('c6')||0,name:$('c7').value.trim(),link:$('c8').value.trim(),pw:o.pw,salt:o.salt};
+const pw=$('c9').value;if(pw){const salt=Math.random().toString(36).slice(2)+Date.now().toString(36);S.cfg.salt=salt;S.cfg.pw=await sha(salt+pw)}
+save();overview();tab('ov');if(pw)alert('Password saved. It only takes effect on the live site after you download data.json and upload it to GitHub.')}
 function nav(){const T=[['ov','Overview'],['cl','Calendar']];if(ADMIN)T.push(['ad','Add trades'],['st','Settings']);$('nav').innerHTML=T.map(a=>`<button data-t="${a[0]}">${a[1]}</button>`).join('');$('nav').querySelectorAll('button').forEach(b=>b.onclick=()=>tab(b.dataset.t))}
 function tab(t){if(!ADMIN&&(t==='ad'||t==='st'))t='ov';['ov','cl','ad','st'].forEach(i=>$(i).classList.toggle('hide',i!==t));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
 try{sessionStorage.setItem('ch_tab',t)}catch(e){}
@@ -234,9 +236,16 @@ function mv(n){const[y,m]=cm.split('-').map(Number),d=new Date(y,m-1+n,1);cm=d.g
 function pubbar(){$('pb').innerHTML=ADMIN&&S.rev>BASE?`<div class="pub"><div class="sec"><span>You have changes that are not on the live site yet.</span><button class="btn" onclick="exportData()">Download data.json</button></div></div>`:''}
 function exportData(){const b=new Blob([JSON.stringify(S,null,1)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='data.json';document.body.appendChild(a);a.click();a.remove();alert('Now upload data.json to your GitHub repository and replace the old one. The live site updates in about a minute.')}
 function start(){nav();pubbar();let t='ov';try{t=sessionStorage.getItem('ch_tab')||'ov'}catch(e){}tab(t)}
-async function boot(){$('ov').innerHTML='<p class="mut">Loading…</p>';
+const sha=async t=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t)))].map(b=>b.toString(16).padStart(2,'0')).join('');
+function askPw(c){return new Promise(res=>{$('ov').innerHTML=`<div class="sec"><b>Admin sign in</b><label for="lp">Password</label><input id="lp" type="password" autocomplete="current-password"><div class="acts"><button class="btn" id="lb">Unlock</button><button class="btn alt" id="lc">Cancel</button></div><p class="mut" id="lm"></p></div>`;
+const go=async()=>{let good=false;try{good=(await sha((c.salt||'')+$('lp').value))===c.pw}catch(e){}if(good)res(true);else{$('lm').textContent='Wrong password.';$('lp').value=''}};
+$('lb').onclick=go;$('lp').onkeydown=e=>{if(e.key==='Enter')go()};$('lc').onclick=()=>res(false);$('lp').focus()})}
+async function boot(){$('ov').innerHTML='<p class="mut">Loading\u2026</p>';
 try{const r=await fetch('data.json?'+Date.now(),{cache:'no-store'}),j=await r.json();if(j&&j.cfg)S=j}catch(e){}
-S.rev=S.rev||0;BASE=S.rev;
+S.rev=S.rev||0;BASE=S.rev;const c=S.cfg;let ok=false;
+try{ok=sessionStorage.getItem('ch_unlock')==='1'}catch(e){}
+if(!ok&&WANT)ok=c.pw?await askPw(c):true;
+if(ok){ADMIN=true;try{sessionStorage.setItem('ch_unlock','1')}catch(e){}}
 try{const d=JSON.parse(localStorage.getItem('ch_draft')||'null');if(ADMIN&&d&&d.cfg&&d.rev>S.rev)S=d}catch(e){}
 start()}
 boot();
