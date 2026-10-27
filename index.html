@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>Challenge Tracker</title>
+<html lang="en"><head><meta charset="utf-8"><title>Challenge Platform</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%88%3C/text%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Figtree:wght@400;600&display=swap" rel="stylesheet">
@@ -41,6 +41,8 @@ input,select,textarea{width:100%;box-sizing:border-box;padding:11px;border:1px s
 .hide{display:none}
 .fmt{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:12px;color:#fff;font-size:.9rem}.fmt label{display:flex;align-items:center;gap:6px;margin:0;color:#fff}.fmt input{width:auto}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.cal .wd{text-align:center;font-size:.75rem;color:var(--mut)}.cd{min-height:54px;border:1px solid var(--ln);border-radius:8px;background:none;color:var(--ink);font:inherit;padding:4px 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}.cd span{font-size:.8rem;color:var(--mut)}.cd b{font:700 .72rem 'Bricolage Grotesque',sans-serif}.cd.w{background:rgba(13,138,85,.16)}.cd.w b{color:var(--up)}.cd.l{background:rgba(207,63,44,.14)}.cd.l b{color:var(--dn)}.cd.sel{outline:2px solid var(--ac)}
+.stg{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}.stg span{padding:6px 12px;border-radius:99px;border:1px solid var(--ln);font-size:.82rem;color:var(--mut)}.stg span.on{background:var(--ac);color:var(--bg);border-color:var(--ac);font-weight:600}.stg span.ok{color:var(--up);border-color:var(--up)}
+#cp{margin:0 0 12px}#cp select{width:auto;max-width:100%;margin-right:8px}
 .pub{position:sticky;top:env(safe-area-inset-top,0px);z-index:5}.pub .sec{display:flex;justify-content:space-between;align-items:center;gap:10px;border-color:var(--ac)}
 .risk{border-width:2px;font-weight:600}.risk.dn{border-color:var(--dn);color:var(--dn)}.risk.am{border-color:#d99a1c;color:#b97f0c}
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.7);overflow:auto;padding:calc(16px + env(safe-area-inset-top,0px)) 16px 24px;z-index:20}
@@ -71,16 +73,25 @@ input,select,textarea{width:100%;box-sizing:border-box;padding:11px;border:1px s
 .pc .ft{display:flex;justify-content:space-between;gap:8px;margin-top:16px;padding-top:10px;border-top:1px solid rgba(255,255,255,.16);font-size:.7rem;color:#9fc7b3;position:relative}
 #modal{padding-left:8px;padding-right:8px}#cardwrap{overflow-x:auto}
 </style></head><body><main>
-<h1>Challenge tracker</h1><div id="pb"></div>
+<h1 id="tt">Challenge platform</h1><div id="cp"></div><div id="pb"></div>
 <nav id="nav"></nav>
-<div id="ov"></div><div id="cl" class="hide"></div><div id="ad" class="hide"></div><div id="st" class="hide"></div>
+<div id="ov"></div><div id="cl" class="hide"></div><div id="ad" class="hide"></div><div id="st" class="hide"></div><div id="ch" class="hide"></div>
 </main>
 <div id="modal" class="hide"><div class="in"><div id="cardwrap"></div><textarea id="cap" rows="3" aria-label="Caption" style="margin-top:12px" oninput="$('txt').href='https://wa.me/?text='+encodeURIComponent(this.value)"></textarea><div class="fmt"><span>Send as:</span><label><input type="checkbox" id="f_jpg" checked>JPEG</label><label><input type="checkbox" id="f_pdf" checked>PDF</label><label><input type="checkbox" id="f_png" checked>PNG</label></div><div id="fl"></div>
 <div class="acts"><button class="btn" id="shbtn" onclick="shareCard()">Share</button><a class="btn alt" id="txt" target="_blank" rel="noopener" style="color:#fff;border-color:#fff">Send text only</a><button class="btn alt" style="color:#fff;border-color:#fff" onclick="$('modal').classList.add('hide')">Close</button></div></div></div>
 <script>
-let S={cfg:{size:1000000,target:3000000,split:70,maxLoss:20,start:'',days:30},trades:[],rev:0},ADMIN=false,BASE=0;
+const S0={id:'',cfg:{size:1000000,target:0,split:70,maxLoss:20,start:'',days:30,type:'instant',name:'New challenge'},trades:[],stage:0,passed:[]};
+let DB={rev:0,cur:'',challenges:[]},S=S0,ADMIN=false,BASE=0;
+function norm(j){if(j&&Array.isArray(j.challenges))return{rev:j.rev||0,cur:j.cur||'',pw:j.pw,salt:j.salt,challenges:j.challenges.map(x=>{x.stage=x.stage||0;x.passed=x.passed||[];x.trades=x.trades||[];return x})};
+if(j&&j.cfg){const c=Object.assign({},j.cfg,{type:'instant',name:j.cfg.name||'Trading challenge',dl:j.cfg.dl||0}),pw=c.pw,salt=c.salt;delete c.pw;delete c.salt;return{rev:j.rev||0,cur:'c1',pw,salt,challenges:[{id:'c1',cfg:c,trades:j.trades||[],stage:0,passed:[]}]}}
+return{rev:0,cur:'',challenges:[]}}
+function pickS(){S=DB.challenges.find(x=>x.id===DB.cur)||DB.challenges[0]||S0;DB.cur=S.id}
+function selectCur(){let cur='';try{cur=sessionStorage.getItem('ch_cur')||''}catch(e){}if(cur&&DB.challenges.find(x=>x.id===cur))DB.cur=cur;pickS()}
+const save=()=>{DB.rev=Math.max(DB.rev||0,BASE)+1;try{localStorage.setItem('ch_draft',JSON.stringify(DB))}catch(e){alert('This browser could not keep a draft. Make sure your changes reach the live site soon.')}pubbar()};
+const PLAT='gh',CAN_IMG=true,LIVEMSG='Changes stay in this browser until you download data.json and upload it to GitHub. Friends only see what is on the live site.';
 const WANT=location.hash==='#admin';try{localStorage.removeItem('ch_admin')}catch(e){}
-const save=()=>{S.rev=Math.max(S.rev||0,BASE)+1;try{localStorage.setItem('ch_draft',JSON.stringify(S))}catch(e){alert('This browser could not keep a draft. Download data.json now to be safe.')}pubbar()};
+async function saveImg(f){const bl=await shrink(f);return new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(bl)})}
+const imgUrl=v=>v;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const N=n=>(n<0?'−':'')+'₦'+Math.abs(Math.round(n)).toLocaleString('en-NG');
@@ -92,25 +103,25 @@ const addD=(s,n)=>{const d=D(s);d.setDate(d.getDate()+n);return iso(d)};
 function wk(a,b){let n=0;for(let d=D(a);d<=D(b);d.setDate(d.getDate()+1)){const g=d.getDay();if(g&&g<6)n++}return n}
 const fd=d=>new Date(d+'T00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
 let lastDate=today(),selDay='';
-function stats(){const c=S.cfg,t=[...S.trades].sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id),m={};
+function stages(ch){const c=ch.cfg,f={kind:c.type==='broker'?'broker':'funded',label:c.type==='broker'?'Account':'Funded',ml:c.maxLoss||0,dl:c.dl||0,md:0,t:0,split:c.type==='broker'?100:(c.split||100),target:c.target||0};
+if(c.type!=='phases')return[f];const r=[];for(let i=0;i<(c.phases||2);i++){const x=(c.rules||[])[i]||{};r.push({kind:'eval',label:'Phase '+(i+1),ml:x.ml||0,dl:x.dl||0,md:x.md||0,t:x.t||0,split:0,target:0})}return r.concat(f)}
+function stats(){const c=S.cfg,sg=stages(S),stg=Math.min(S.stage||0,sg.length-1),R=sg[stg],t=S.trades.filter(x=>(x.st||0)===stg).sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id),m={};
 t.forEach(x=>(m[x.date]=m[x.date]||[]).push(x));
 let bal=c.size;const pts=[c.size],dl=Object.keys(m).sort().map(d=>{const p=m[d].reduce((a,x)=>a+x.pl,0);bal+=p;pts.push(bal);return{d,p,bal,t:m[d]}});
-const floor=c.size*(1-c.maxLoss/100),pl=bal-c.size,w=t.filter(x=>x.pl>0).length;
-return{c,t,dl,pts,bal,pl,floor,used:Math.max(0,(c.size-bal)/(c.size-floor))*100,pay:Math.max(0,pl)*c.split/100,wr:t.length?Math.round(w/t.length*100):0,
+const lossAmt=c.size*(R.ml||100)/100,floor=c.size-lossAmt,pl=bal-c.size,w=t.filter(x=>x.pl>0).length,goal=R.kind==='eval'?c.size*R.t/100:(R.split&&R.target?R.target/(R.split/100):0);
+return{c,R,stg,sg,t,dl,pts,bal,pl,floor,lossAmt,goal,used:Math.max(0,(c.size-bal)/lossAmt)*100,pay:R.kind==='eval'?0:Math.max(0,pl)*R.split/100,wr:t.length?Math.round(w/t.length*100):0,
 best:dl.length?Math.max(...dl.map(x=>x.p)):0,worst:dl.length?Math.min(...dl.map(x=>x.p)):0,streak:(()=>{let n=0;for(let i=dl.length-1;i>=0&&dl[i].p>0;i--)n++;return n})()}}
 function dayNo(s,d){const c=s.c;return c.start?Math.floor((new Date(d)-new Date(c.start))/864e5)+1:s.dl.findIndex(x=>x.d===d)+1}
 const bar=(p,col)=>`<div class="bar"><i style="width:${Math.max(0,Math.min(100,p))}%;background:${col}"></i></div>`;
 function curve(p,col){if(p.length<2)return'';const w=600,h=120,mn=Math.min(...p),mx=Math.max(...p),r=(mx-mn)||1;
 const pts=p.map((v,i)=>(i/(p.length-1)*w)+','+(h-8-(v-mn)/r*(h-16))).join(' ');
 return`<svg viewBox="0 0 ${w} ${h}" width="100%" height="110" preserveAspectRatio="none" style="display:block;margin-top:10px"><polyline fill="none" stroke="${col}" stroke-width="3" stroke-linejoin="round" points="${pts}"/></svg>`}
-function overview(){const s=stats(),c=s.c;
+function overview(){if(!DB.challenges.length){$('ov').innerHTML=`<div class="sec"><b>No challenge yet</b><p class="mut">${ADMIN?'Open the Challenges tab to create the first one.':'Nothing to show yet. Check back soon.'}</p></div>`;return}
+const s=stats(),c=s.c;
 if(!selDay||!s.dl.find(x=>x.d===selDay))selDay=s.dl.length?s.dl[s.dl.length-1].d:'';
-$('ov').innerHTML=`${riskBar(s)}<div class="sec"><div class="lb">Account balance</div><div class="big">${N(s.bal)}</div>
+$('ov').innerHTML=`${stageBar(s)}${riskBar(s)}${passBox(s)}<div class="sec"><div class="lb">Account balance</div><div class="big">${N(s.bal)}</div>
 <div class="${s.pl>=0?'up':'dn'}">${P(s.pl)} (${(s.pl/c.size*100).toFixed(2)}%)</div>${curve(s.pts,'var(--ac)')}</div>
-<div class="sec"><div class="row"><b>Withdrawal progress</b><span class="num">${N(s.pay)}</span></div>${bar(s.pay/c.target*100,'var(--up)')}
-<div class="mut">Target ${N(c.target)}, estimated at a ${c.split}% profit split</div></div>
-<div class="sec"><div class="row"><b>Loss limit</b><span class="num">${N(Math.max(0,s.bal-s.floor))} left</span></div>${bar(s.used,s.used>70?'var(--dn)':'var(--ac)')}
-<div class="mut">Account breaks below ${N(s.floor)} (${c.maxLoss}% of ${N(c.size)})</div></div>
+${goalBox(s)}${lossBox(s)}
 ${pace(s)}<div class="sec grid"><div><div class="lb">Trades</div><div class="num">${s.t.length}</div></div><div><div class="lb">Win rate</div><div class="num">${s.wr}%</div></div>
 <div><div class="lb">Days traded</div><div class="num">${s.dl.length}${c.days?' / '+c.days:''}</div></div><div><div class="lb">Best day</div><div class="num up">${P(s.best)}</div></div>
 <div><div class="lb">Worst day</div><div class="num ${s.worst>=0?'up':'dn'}">${P(s.worst)}</div></div><div><div class="lb">Green streak</div><div class="num">${s.streak} day${s.streak===1?'':'s'}</div></div></div>${insights(s)}${milestones(s)}
@@ -118,45 +129,65 @@ ${pace(s)}<div class="sec grid"><div><div class="lb">Trades</div><div class="num
 <select id="sd" onchange="selDay=this.value">${s.dl.map(x=>`<option value="${x.d}" ${x.d===selDay?'selected':''}>${fd(x.d)}</option>`).join('')||'<option value="">No trades yet</option>'}</select>
 <div class="acts"><button class="btn" onclick="openCard('day')">Daily report</button><button class="btn alt" onclick="openCard('all')">Overall report</button></div></div>
 <div class="sec days"><b>Daily results</b>${s.dl.slice().reverse().map(x=>`<button onclick="selDay='${x.d}';overview();window.scrollTo(0,0)"><span>${fd(x.d)} <span class="mut">${x.t.length} trade${x.t.length>1?'s':''}</span></span><b class="${x.p>=0?'up':'dn'}">${P(x.p)}</b></button>`).join('')||'<p class="mut">No trades yet. Add the first one under Add trades.</p>'}</div>`}
-function admin(){const s=stats();
-$('ad').innerHTML=`<div class="sec"><b>Add a trade</b>
+function admin(){if(!DB.challenges.length){$('ad').innerHTML='<div class="sec"><p class="mut">Create a challenge in the Challenges tab first.</p></div>';return}
+const s=stats();
+$('ad').innerHTML=`<div class="sec"><b>Add a trade${s.sg.length>1?' ('+s.R.label+')':''}</b>
 <div class="two"><div><label for="fd">Date</label><input id="fd" type="date" value="${lastDate}"></div><div><label for="fp">Pair</label><input id="fp" placeholder="XAUUSD" autocapitalize="characters"></div></div>
 <div class="two"><div><label for="fs">Direction</label><select id="fs"><option>Buy</option><option>Sell</option></select></div><div><label for="fr">Result</label><select id="fr"><option value="1">Profit</option><option value="-1">Loss</option></select></div></div>
 <label for="fa">Amount (₦)</label><input id="fa" type="number" inputmode="decimal" min="0" placeholder="25000">
 <label for="fn">Reason for the trade (optional)</label><input id="fn" placeholder="Breakout on the 15-minute chart">
 <label for="ft">Trade type</label><select id="ft"><option>Followed plan</option><option>Broke rules</option><option>Revenge trade</option><option>News trade</option></select>
-${ASSETS?`<label for="fi">Chart screenshot (optional)</label><input id="fi" type="file" accept="image/*">`:''}
+${CAN_IMG?`<label for="fi">Chart screenshot (optional)</label><input id="fi" type="file" accept="image/*">`:''}
 <div class="acts"><button class="btn" onclick="addTrade()">Save trade</button></div><p class="mut" id="msg"></p></div>
 <div class="sec"><b>All trades</b>${s.t.slice().reverse().map(x=>`<div class="tr"><span>${fd(x.date)} · ${esc(x.pair)} ${x.side}<br><span class="mut">${esc(x.tag||'')}${x.img?', chart attached':''} ${esc(x.note||'')}</span></span><span><b class="${x.pl>=0?'up':'dn'}">${P(x.pl)}</b> <button onclick="delTrade(${x.id})" aria-label="Delete trade">Delete</button></span></div>`).join('')||'<p class="mut">Nothing logged yet.</p>'}</div>
-<div class="sec"><b>Backup</b><p class="mut">Changes stay in this browser until you download data.json and upload it to GitHub. Friends only see what is on the live site. Copy this text somewhere safe, and paste it back here to restore.</p>
-<textarea id="bk" rows="4">${esc(JSON.stringify(S))}</textarea><div class="acts"><button class="btn alt" onclick="restore()">Restore from text</button></div></div>`}
+<div class="sec"><b>Backup</b><p class="mut">${LIVEMSG} Copy this text somewhere safe, and paste it back here to restore.</p>
+<textarea id="bk" rows="4">${esc(JSON.stringify(DB))}</textarea><div class="acts"><button class="btn alt" onclick="restore()">Restore from text</button></div></div>`}
 async function shrink(f){const b=await createImageBitmap(f),k=Math.min(1,900/Math.max(b.width,b.height)),c=document.createElement('canvas');c.width=b.width*k;c.height=b.height*k;c.getContext('2d').drawImage(b,0,0,c.width,c.height);return new Promise(r=>c.toBlob(r,'image/jpeg',.6))}
 async function addTrade(){const a=parseFloat($('fa').value),p=$('fp').value.trim().toUpperCase();
 if(!p||!(a>=0)||$('fa').value===''){$('msg').textContent='Enter the pair and the amount before saving.';return}
 let img='';const f=$('fi')&&$('fi').files[0];
-if(f&&ASSETS){$('msg').textContent='Uploading screenshot…';try{const bl=await shrink(f);img=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(bl)})}catch(e){if(!confirm('The screenshot could not be uploaded. Save the trade without it?'))return}}
-lastDate=$('fd').value||today();S.trades.push({id:Date.now(),date:lastDate,pair:p,side:$('fs').value,pl:a*parseInt($('fr').value),note:$('fn').value.trim(),tag:$('ft').value,img});
+if(f&&CAN_IMG){$('msg').textContent='Uploading screenshot…';try{img=await saveImg(f)}catch(e){if(!confirm('The screenshot could not be uploaded. Save the trade without it?'))return}}
+lastDate=$('fd').value||today();S.trades.push({id:Date.now(),date:lastDate,pair:p,side:$('fs').value,pl:a*parseInt($('fr').value),note:$('fn').value.trim(),tag:$('ft').value,img,st:S.stage||0});
 save();admin();overview();const u=stats().used;$('msg').textContent='Trade saved.'+(u>=75?' Warning: '+Math.round(u)+'% of the loss limit is used.':'')}
 function delTrade(id){if(!confirm('Delete this trade?'))return;S.trades=S.trades.filter(x=>x.id!==id);save();admin();overview()}
-function restore(){try{const o=JSON.parse($('bk').value);if(!o.cfg||!Array.isArray(o.trades))throw 0;S=o;save();admin();settings();overview()}catch(e){alert('That backup text is not valid.')}}
-function settings(){const c=S.cfg;const f=(id,l,v,t='number')=>`<label for="${id}">${l}</label><input id="${id}" type="${t}" value="${v}">`;
-$('st').innerHTML=`<div class="sec"><b>Challenge rules</b><p class="mut">Set these to match the account rules on NairaTrader.</p>
-${f('c1','Account size (₦)',c.size)}${f('c2','Total withdrawal target (₦)',c.target)}${f('c3','Profit split (%)',c.split)}${f('c4','Maximum loss (% of starting balance)',c.maxLoss)}${f('c5','Challenge start date',c.start,'date')}${f('c6','Challenge length (days)',c.days)}${f('c7','Challenge name shown on cards',c.name||'','text')}${f('c8','Link shown on cards (optional)',c.link||'','text')}${f('c9',c.pw?'Change admin password (leave empty to keep the current one)':'Set an admin password','','password')}
-<div class="acts"><button class="btn" onclick="saveCfg()">Save rules</button></div></div>`}
-async function saveCfg(){const g=i=>parseFloat($(i).value),o=S.cfg;S.cfg={size:g('c1')||1e6,target:g('c2')||3e6,split:g('c3')||100,maxLoss:g('c4')||20,start:$('c5').value,days:g('c6')||0,name:$('c7').value.trim(),link:$('c8').value.trim(),pw:o.pw,salt:o.salt};
-const pw=$('c9').value;if(pw){const salt=Math.random().toString(36).slice(2)+Date.now().toString(36);S.cfg.salt=salt;S.cfg.pw=await sha(salt+pw)}
-save();overview();tab('ov');if(pw)alert('Password saved. It only takes effect on the live site after you download data.json and upload it to GitHub.')}
-function nav(){const T=[['ov','Overview'],['cl','Calendar']];if(ADMIN)T.push(['ad','Add trades'],['st','Settings']);$('nav').innerHTML=T.map(a=>`<button data-t="${a[0]}">${a[1]}</button>`).join('');$('nav').querySelectorAll('button').forEach(b=>b.onclick=()=>tab(b.dataset.t))}
-function tab(t){if(!ADMIN&&(t==='ad'||t==='st'))t='ov';['ov','cl','ad','st'].forEach(i=>$(i).classList.toggle('hide',i!==t));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+function restore(){try{const o=norm(JSON.parse($('bk').value));if(!o.challenges.length)throw 0;DB=o;pickS();save();start()}catch(e){alert('That backup text is not valid.')}}
+const TYPES={phases:'Prop firm with phases',instant:'Prop firm, instant funded',broker:'Broker account'};
+function head(){const has=DB.challenges.length;$('tt').textContent=has?S.cfg.name:'Challenge platform';
+$('cp').innerHTML=has?(DB.challenges.length>1?`<select id="cs" onchange="pick(this.value)" aria-label="Choose challenge">${DB.challenges.map(x=>`<option value="${x.id}" ${x.id===S.id?'selected':''}>${esc(x.cfg.name)}</option>`).join('')}</select> `:'')+`<span class="mut">${TYPES[S.cfg.type]}</span>`:''}
+function pick(id){DB.cur=id;S=DB.challenges.find(x=>x.id===id)||S;try{sessionStorage.setItem('ch_cur',id)}catch(e){}selDay='';cm='';cd='';start()}
+function settings(){if(!DB.challenges.length){$('st').innerHTML='<div class="sec"><p class="mut">Create a challenge first.</p></div>';return}
+const c=S.cfg,f=(id,l,v,t='number')=>`<label for="${id}">${l}</label><input id="${id}" type="${t}" value="${v}">`;let r='';
+if(c.type==='phases'){const n=c.phases||2;r=`<label for="pn">Phases to pass before the funded account</label><select id="pn" onchange="S.cfg.phases=+this.value;settings()">${[1,2,3,4].map(k=>`<option ${k===n?'selected':''}>${k}</option>`).join('')}</select>`;
+for(let i=0;i<n;i++){const x=(c.rules||[])[i]||{t:i?5:8,ml:10,dl:5,md:0};r+=`<div class="sec" style="margin-top:10px"><b>Phase ${i+1}</b><div class="two">${f('rt'+i,'Profit target (%)',x.t)}${f('rm'+i,'Minimum trading days',x.md||0)}${f('rl'+i,'Max total loss (%)',x.ml)}${f('rd'+i,'Max daily loss (%)',x.dl)}</div></div>`}
+r+=`<div class="sec" style="margin-top:10px"><b>Funded account</b>`}
+else r+=`<div class="sec" style="margin-top:10px"><b>${c.type==='broker'?'Account rules':'Funded account rules'}</b>`;
+r+=`<div class="two">${f('c4','Max total loss (%, 0 for none)',c.maxLoss||0)}${f('c10','Max daily loss (%, 0 for none)',c.dl||0)}</div>${c.type==='broker'?'':f('c3','Profit split (%)',c.split||100)}${f('c2',c.type==='broker'?'Profit goal (\u20a6)':'Payout target (\u20a6)',c.target||0)}</div>`;
+$('st').innerHTML=`<div class="sec"><b>${esc(c.name)}</b><p class="mut">${TYPES[c.type]}. Match these to the rules of your account.</p>${f('c7','Challenge name',esc(c.name||''),'text')}${f('c1','Account size (\u20a6)',c.size)}<div class="two">${f('c5','Start date',c.start||'','date')}${f('c6','Length (days)',c.days||0)}</div>${f('c8','Link shown on cards (optional)',esc(c.link||''),'text')}</div>${r}<div class="acts"><button class="btn" onclick="saveCfg()">Save rules</button></div>`}
+function saveCfg(){const g=(i,d=0)=>$(i)?(parseFloat($(i).value)||d):d,c=S.cfg;c.name=$('c7').value.trim()||c.name;c.size=g('c1',1e6);c.start=$('c5').value;c.days=g('c6');c.link=$('c8').value.trim();
+if(c.type==='phases'){c.rules=[];for(let i=0;i<(c.phases||2);i++)c.rules.push({t:g('rt'+i),ml:g('rl'+i),dl:g('rd'+i),md:g('rm'+i)})}
+c.maxLoss=g('c4');c.dl=g('c10');c.split=c.type==='broker'?100:g('c3',100);c.target=g('c2');save();start();tab('ov')}
+function chTab(){const L=DB.challenges.map(x=>`<div class="tr"><span><b>${esc(x.cfg.name)}</b><br><span class="mut">${TYPES[x.cfg.type]}, ${N(x.cfg.size)}${x.cfg.type==='phases'?', now in '+stages(x)[Math.min(x.stage||0,stages(x).length-1)].label:''}</span></span><span>${x.id===S.id?'<span class="mut">Open</span>':`<button onclick="pick('${x.id}');tab('ch')" style="color:var(--ac)">Open</button>`} <button onclick="delCh('${x.id}')">Delete</button></span></div>`).join('')||'<p class="mut">No challenges yet.</p>';
+$('ch').innerHTML=`<div class="sec"><b>Your challenges</b>${L}</div><div class="sec"><b>New challenge</b>
+<label for="nn">Name</label><input id="nn" placeholder="November challenge">
+<label for="nt">Type</label><select id="nt" onchange="$('npw').style.display=this.value==='phases'?'block':'none'"><option value="phases">Prop firm with phases</option><option value="instant">Prop firm, instant funded</option><option value="broker">Broker account</option></select>
+<div id="npw"><label for="np">Phases to pass</label><select id="np"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></div>
+<label for="ns">Account size (\u20a6)</label><input id="ns" type="number" value="1000000">
+<div class="acts"><button class="btn" onclick="newCh()">Create challenge</button></div></div>${pwBox()}`}
+function newCh(){const t=$('nt').value,n=+$('np').value,sz=parseFloat($('ns').value)||1e6,c={type:t,name:$('nn').value.trim()||'New challenge',size:sz,start:'',days:30,link:'',maxLoss:t==='broker'?0:t==='phases'?10:20,dl:t==='phases'?5:0,split:t==='broker'?100:t==='phases'?80:70,target:t==='broker'?Math.round(sz*.2):t==='phases'?sz:sz*3};
+if(t==='phases'){c.phases=n;c.rules=Array.from({length:n},(_,i)=>({t:i?5:8,ml:10,dl:5,md:0}))}
+const ch={id:'c'+Date.now().toString(36),cfg:c,trades:[],stage:0,passed:[]};DB.challenges.push(ch);DB.cur=ch.id;S=ch;try{sessionStorage.setItem('ch_cur',ch.id)}catch(e){}save();start();tab('st')}
+function delCh(id){const x=DB.challenges.find(y=>y.id===id);if(!x||!confirm('Delete '+x.cfg.name+' and all its trades?'))return;DB.challenges=DB.challenges.filter(y=>y.id!==id);if(DB.cur===id)DB.cur='';pickS();save();start();tab('ch')}
+function nav(){const T=[['ov','Overview'],['cl','Calendar']];if(ADMIN)T.push(['ad','Add trades'],['st','Settings'],['ch','Challenges']);$('nav').innerHTML=T.map(a=>`<button data-t="${a[0]}">${a[1]}</button>`).join('');$('nav').querySelectorAll('button').forEach(b=>b.onclick=()=>tab(b.dataset.t))}
+function tab(t){if(!ADMIN&&(t==='ad'||t==='st'||t==='ch'))t='ov';['ov','cl','ad','st','ch'].forEach(i=>$(i).classList.toggle('hide',i!==t));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
 try{sessionStorage.setItem('ch_tab',t)}catch(e){}
-if(t==='ad')admin();if(t==='st')settings();if(t==='ov')overview();if(t==='cl')calendar();window.scrollTo(0,0)}
+if(t==='ad')admin();if(t==='st')settings();if(t==='ov')overview();if(t==='cl')calendar();if(t==='ch')chTab();window.scrollTo(0,0)}
 let TXT='',FN='challenge';
 const cname=()=>S.cfg.name||'Trading challenge';
 function pcurve(p,up){if(p.length<2)p=[p[0]||0,p[0]||0];const w=300,h=96,mn=Math.min(...p),mx=Math.max(...p),r=(mx-mn)||1,xy=p.map((v,i)=>[8+i/(p.length-1)*(w-16),h-12-(v-mn)/r*(h-28)]),l=xy.map(a=>a[0].toFixed(1)+','+a[1].toFixed(1)).join(' '),e=xy[xy.length-1],col=up?'#6ef2a8':'#ff8a76';
 return`<svg class="chart" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}"><defs><linearGradient id="gf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".35"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs><polygon points="8,${h} ${l} ${w-8},${h}" fill="url(#gf)"/><polyline points="${l}" fill="none" stroke="${col}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${e[0].toFixed(1)}" cy="${e[1].toFixed(1)}" r="5" fill="#fff" stroke="${col}" stroke-width="3"/></svg>`}
-function pcHead(sub,pill){return`<div class="wm">\u20a6</div><div class="top"><div class="brand">${esc(cname())}</div><div class="pill">${pill}</div></div><div class="dt">${sub}</div>`}
-function pcProg(s,bal){const c=s.c,pay=Math.max(0,bal-c.size)*c.split/100,pp=Math.min(100,pay/c.target*100),room=Math.max(0,bal-s.floor),used=Math.max(0,(c.size-bal)/(c.size-s.floor))*100;
-return`<div class="pg"><div class="rw"><span>Road to ${N(c.target)}</span><b>${pp.toFixed(0)}%</b></div><div class="trk"><i style="width:${pp}%;background:linear-gradient(90deg,#f2c14e,#ffe08a)"></i></div></div><div class="pg"><div class="rw"><span>Loss limit room</span><b>${N(room)}</b></div><div class="trk"><i style="width:${Math.max(0,100-used)}%;background:${used>70?'#ff8a76':'#6ef2a8'}"></i></div></div>`}
+function pcHead(sub,pill){return`<div class="wm">\u20a6</div><div class="top"><div class="brand">${esc(cname())}${S.cfg.type==='phases'?' / '+stages(S)[Math.min(S.stage||0,stages(S).length-1)].label:''}</div><div class="pill">${pill}</div></div><div class="dt">${sub}</div>`}
+function pcProg(s,bal){const c=s.c,R=s.R,pl=bal-c.size,pp=Math.min(100,R.kind==='eval'?(s.goal?Math.max(0,pl)/s.goal*100:0):(c.target?Math.max(0,pl)*R.split/100/c.target*100:0)),room=Math.max(0,bal-s.floor),used=Math.max(0,(c.size-bal)/s.lossAmt)*100,lab=R.kind==='eval'?R.label+' target '+N(s.goal):(c.type==='broker'?'Profit goal '+N(c.target):'Road to '+N(c.target));
+return`<div class="pg"><div class="rw"><span>${lab}</span><b>${pp.toFixed(0)}%</b></div><div class="trk"><i style="width:${pp}%;background:linear-gradient(90deg,#f2c14e,#ffe08a)"></i></div></div>${R.ml?`<div class="pg"><div class="rw"><span>Loss limit room</span><b>${N(room)}</b></div><div class="trk"><i style="width:${Math.max(0,100-used)}%;background:${used>70?'#ff8a76':'#6ef2a8'}"></i></div></div>`:''}`}
 function pcFoot(){const l=S.cfg.link;return`<div class="ft"><span>${l?esc(l):'Live challenge tracker'}</span><span>${S.trades.length} trades logged</span></div>`}
 function openCard(kind,ix){const s=stats(),c=s.c,st=(v,l)=>`<div><b>${v}</b><span>${l}</span></div>`;let h,sub;
 if(kind==='day'){const i=s.dl.findIndex(y=>y.d===selDay),x=s.dl[i];if(!x){alert('Add a trade first.');return}
@@ -189,20 +220,29 @@ if(want.includes('png'))files.push(new File([await toBlob(cv,'image/png')],FN+'.
 b.disabled=false;b.textContent='Share';
 try{if(navigator.canShare&&navigator.canShare({files})){await navigator.share({files,text:$('cap').value.trim()||TXT});return}}catch(e){if(e&&e.name==='AbortError')return}
 $('fl').innerHTML='<p style="color:#fff;margin:12px 0 4px">Direct sharing is not available in this browser. Open each file below to save it, or press and hold the image.</p>'+files.map(f=>`<a class="btn alt" style="color:#fff;border-color:#fff;margin:4px 6px 4px 0" href="${URL.createObjectURL(f)}" target="_blank" rel="noopener">${f.name.split('.').pop().toUpperCase()}</a>`).join('')+`<img src="${cv.toDataURL('image/png')}" style="width:100%;border-radius:16px;margin-top:8px" alt="Performance card">`}
-let ASSETS=true,FACTS='';
-function riskBar(s){const u=s.used;if(!s.t.length)return'';let m='',cl='';
-if(s.bal<=s.floor){m='Loss limit breached. The account is below '+N(s.floor)+'.';cl='dn'}
-else if(u>=75){m='Danger: '+Math.round(u)+'% of the loss limit is used. Only '+N(s.bal-s.floor)+' of room left.';cl='dn'}
-else if(u>=50){m='Caution: '+Math.round(u)+'% of the loss limit is used. '+N(s.bal-s.floor)+' of room left.';cl='am'}
+let FACTS='';
+function stageBar(s){if(s.sg.length<2)return'';return`<div class="stg">${s.sg.map((r,i)=>`<span class="${i<s.stg?'ok':i===s.stg?'on':''}">${i<s.stg?'\u2713 ':''}${r.label}</span>`).join('')}</div>${(S.passed||[]).map(p=>`<div class="mut" style="margin:-6px 0 10px">${s.sg[p.st]?s.sg[p.st].label:'Phase'} passed on ${fd(p.date)} at ${N(p.bal)}</div>`).join('')}`}
+function goalBox(s){const R=s.R,c=s.c;
+if(R.kind==='eval'){const md=R.md||0;return`<div class="sec"><div class="row"><b>${R.label} target</b><span class="num">${N(Math.max(0,s.pl))} of ${N(s.goal)}</span></div>${bar(s.goal?Math.max(0,s.pl)/s.goal*100:0,'var(--up)')}<div class="mut">Profit target ${R.t}% of the account${md?', trading days '+s.dl.length+' of '+md+' minimum':''}</div></div>`}
+return`<div class="sec"><div class="row"><b>${c.type==='broker'?'Profit goal':'Withdrawal progress'}</b><span class="num">${N(c.type==='broker'?Math.max(0,s.pl):s.pay)}</span></div>${bar(c.target?s.pay/c.target*100:0,'var(--up)')}<div class="mut">Target ${N(c.target)}${R.split<100?', estimated at a '+R.split+'% profit split':''}</div></div>`}
+function lossBox(s){const R=s.R;return`<div class="sec"><div class="row"><b>Loss limit</b><span class="num">${R.ml?N(Math.max(0,s.bal-s.floor))+' left':'No limit'}</span></div>${bar(R.ml?s.used:0,s.used>70?'var(--dn)':'var(--ac)')}<div class="mut">${R.ml?'Breaks below '+N(s.floor)+' ('+R.ml+'% of '+N(s.c.size)+')':'No maximum loss rule'}${R.dl?'. Daily loss limit '+R.dl+'% ('+N(s.c.size*R.dl/100)+')':''}</div></div>`}
+function passBox(s){if(!ADMIN||s.R.kind!=='eval'||!s.goal||s.pl<s.goal)return'';const md=s.R.md||0;return`<div class="sec risk" style="border-color:var(--up);color:var(--ink)"><div class="row"><span><b>${s.R.label} target reached.</b>${md&&s.dl.length<md?' Minimum trading days not met yet ('+s.dl.length+' of '+md+').':''}</span><button class="btn" onclick="passPhase()">Pass phase</button></div></div>`}
+function passPhase(){const s=stats();if(!confirm('Pass '+s.R.label+' and start the next stage with a fresh account?'))return;S.passed=(S.passed||[]).concat({st:s.stg,date:today(),bal:s.bal});S.stage=s.stg+1;selDay='';save();start()}
+function riskBar(s){const u=s.used,R=s.R;if(!s.t.length)return'';let m='',cl='';
+const dlim=R.dl?s.c.size*R.dl/100:0,ld=s.dl[s.dl.length-1],dbr=dlim&&ld&&ld.p<0&&-ld.p>=dlim;
+if(R.ml&&s.bal<=s.floor){m='Loss limit breached. The account is below '+N(s.floor)+'.';cl='dn'}
+else if(dbr){m='Daily loss limit breached on '+fd(ld.d)+': '+N(-ld.p)+' lost, limit '+N(dlim)+'.';cl='dn'}
+else if(R.ml&&u>=75){m='Danger: '+Math.round(u)+'% of the loss limit is used. Only '+N(s.bal-s.floor)+' of room left.';cl='dn'}
+else if(R.ml&&u>=50){m='Caution: '+Math.round(u)+'% of the loss limit is used. '+N(s.bal-s.floor)+' of room left.';cl='am'}
 return m?`<div class="sec risk ${cl}">${m}</div>`:''}
-function pace(s){const c=s.c;if(!c.start||!c.days)return'';const end=addD(c.start,c.days-1),t=today(),req=c.target/(c.split/100);
+function pace(s){const c=s.c,R=s.R;if(!c.start||!c.days||!s.goal)return'';const end=addD(c.start,c.days-1),t=today();
 const box=(a,b)=>`<div class="sec"><b>Pace to target</b>${a}<div class="mut">${b}</div></div>`;
-if(s.pay>=c.target)return box('<div class="num up">Target reached</div>','The withdrawal target of '+N(c.target)+' is covered.');
+if(s.pl>=s.goal)return box('<div class="num up">Target reached</div>',R.kind==='eval'?R.label+' target is covered.':'The target of '+N(c.target)+' is covered.');
 if(t<c.start)return box('<div class="num">Starts '+fd(c.start)+'</div>','');
-if(t>end)return box('<div class="num">Challenge ended</div>','Final result: '+N(s.pay)+' of the '+N(c.target)+' withdrawal target.');
-const left=wk(t,end),tot=wk(c.start,end)||1,last=s.dl.length?s.dl[s.dl.length-1].d:'',gone=Math.max(0,wk(c.start,t)-(last===t||!wk(t,t)?0:1)),exp=req*gone/tot,diff=s.pl-exp,need=Math.max(0,req-s.pl),per=left?need/left:need;
+if(t>end)return box('<div class="num">Challenge ended</div>','Final profit: '+N(Math.max(0,s.pl))+' of the '+N(s.goal)+' needed.');
+const left=wk(t,end),tot=wk(c.start,end)||1,last=s.dl.length?s.dl[s.dl.length-1].d:'',gone=Math.max(0,wk(c.start,t)-(last===t||!wk(t,t)?0:1)),exp=s.goal*gone/tot,diff=s.pl-exp,need=Math.max(0,s.goal-s.pl),per=left?need/left:need;
 return box(`<div class="row"><span class="num">${N(per)}</span><span class="mut">per trading day for ${left} more</span></div>`,
-`${gone?`You are <b class="${diff>=0?'up':'dn'}">${N(Math.abs(diff))} ${diff>=0?'ahead of':'behind'}</b> pace. `:''}Average so far: ${s.dl.length?N(s.pl/s.dl.length):'none yet'} per trading day. ${N(need)} more profit is needed at a ${c.split}% split.`)}
+`${gone?`You are <b class="${diff>=0?'up':'dn'}">${N(Math.abs(diff))} ${diff>=0?'ahead of':'behind'}</b> pace. `:''}Average so far: ${s.dl.length?N(s.pl/s.dl.length):'none yet'} per trading day. ${N(need)} more profit is needed.`)}
 function insights(s){if(s.t.length<2)return'';const w=s.t.filter(x=>x.pl>0),l=s.t.filter(x=>x.pl<0),gw=w.reduce((a,x)=>a+x.pl,0),gl=-l.reduce((a,x)=>a+x.pl,0);
 const grp=f=>{const m={};s.t.forEach(x=>{const k=f(x);if(k)m[k]=(m[k]||0)+x.pl});return Object.entries(m).sort((a,b)=>b[1]-a[1])};
 const pr=grp(x=>x.pair),wd=grp(x=>D(x.date).toLocaleDateString('en-GB',{weekday:'long'})),tg=grp(x=>x.tag);
@@ -215,7 +255,7 @@ s.dl.forEach((x,i)=>{run=x.p>0?run+1:0;
 if(x.p>0&&!fg){fg=1;o.push({t:'First green day',d:x.d,bal:x.bal})}
 if(run===3&&!b3){b3=1;o.push({t:'3 green days in a row',d:x.d,bal:x.bal})}
 if(run===5&&!b5){b5=1;o.push({t:'5 green days in a row',d:x.d,bal:x.bal})}
-const pc=Math.max(0,x.bal-c.size)*c.split/100/c.target*100;[25,50,75,100].forEach(t=>{if(pc>=t&&!hit[t]){hit[t]=1;o.push({t:t+'% of the withdrawal target',d:x.d,bal:x.bal})}});
+const pc=s.goal?Math.max(0,x.bal-c.size)/s.goal*100:0;[25,50,75,100].forEach(t=>{if(pc>=t&&!hit[t]){hit[t]=1;o.push({t:t+(s.R.kind==='eval'?'% of the phase target':'% of the profit goal'),d:x.d,bal:x.bal})}});
 if(i>0&&x.p>0&&x.p>bd)o.push({t:'New best day: '+P(x.p),d:x.d,bal:x.bal});
 bd=Math.max(bd,x.p)});return o}
 function milestones(s){const o=mstones(s);if(!o.length)return'';
@@ -231,22 +271,24 @@ const x=mp[cd];
 $('cl').innerHTML=`<div class="sec"><div class="row"><button class="btn alt" onclick="mv(-1)" aria-label="Previous month">Prev</button><b class="num">${new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'})}</b><button class="btn alt" onclick="mv(1)" aria-label="Next month">Next</button></div>
 <p class="mut">${td} trading day${td===1?'':'s'}, <b class="${tot>=0?'up':'dn'}">${P(tot)}</b> this month</p>
 <div class="cal">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(w=>`<div class="wd">${w}</div>`).join('')}${cells}</div></div>
-<div class="sec"><b>${cd?fd(cd):'Pick a day'}</b>${x?x.t.map(t=>`<div class="tr" style="flex-wrap:wrap"><span>${esc(t.pair)} ${t.side}<br><span class="mut">${esc(t.tag||'')} ${esc(t.note||'')}</span></span><b class="${t.pl>=0?'up':'dn'}">${P(t.pl)}</b>${t.img?`<img src="${t.img}" alt="Chart for ${esc(t.pair)}" style="width:100%;border-radius:10px;margin-top:6px">`:''}</div>`).join('')+`<div class="tr"><span class="mut">Day total</span><b class="${x.p>=0?'up':'dn'}">${P(x.p)}</b></div>`:`<p class="mut">${cd?'No trades on this day.':'Tap a day on the calendar to see its trades.'}</p>`}</div>`}
+<div class="sec"><b>${cd?fd(cd):'Pick a day'}</b>${x?x.t.map(t=>`<div class="tr" style="flex-wrap:wrap"><span>${esc(t.pair)} ${t.side}<br><span class="mut">${esc(t.tag||'')} ${esc(t.note||'')}</span></span><b class="${t.pl>=0?'up':'dn'}">${P(t.pl)}</b>${t.img?`<img src="${imgUrl(t.img)}" alt="Chart for ${esc(t.pair)}" style="width:100%;border-radius:10px;margin-top:6px">`:''}</div>`).join('')+`<div class="tr"><span class="mut">Day total</span><b class="${x.p>=0?'up':'dn'}">${P(x.p)}</b></div>`:`<p class="mut">${cd?'No trades on this day.':'Tap a day on the calendar to see its trades.'}</p>`}</div>`}
 function mv(n){const[y,m]=cm.split('-').map(Number),d=new Date(y,m-1+n,1);cm=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');calendar()}
-function pubbar(){$('pb').innerHTML=ADMIN&&S.rev>BASE?`<div class="pub"><div class="sec"><span>You have changes that are not on the live site yet.</span><button class="btn" onclick="exportData()">Download data.json</button></div></div>`:''}
-function exportData(){const b=new Blob([JSON.stringify(S,null,1)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='data.json';document.body.appendChild(a);a.click();a.remove();alert('Now upload data.json to your GitHub repository and replace the old one. The live site updates in about a minute.')}
-function start(){nav();pubbar();let t='ov';try{t=sessionStorage.getItem('ch_tab')||'ov'}catch(e){}tab(t)}
+function start(){head();nav();pubbar();let t='ov';try{t=sessionStorage.getItem('ch_tab')||'ov'}catch(e){}tab(t)}
+function pubbar(){$('pb').innerHTML=ADMIN&&DB.rev>BASE?`<div class="pub"><div class="sec"><span>You have changes that are not on the live site yet.</span><button class="btn" onclick="exportData()">Download data.json</button></div></div>`:''}
+function exportData(){const b=new Blob([JSON.stringify(DB,null,1)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='data.json';document.body.appendChild(a);a.click();a.remove();alert('Now upload data.json to your GitHub repository and replace the old one. The live site updates in about a minute.')}
 const sha=async t=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t)))].map(b=>b.toString(16).padStart(2,'0')).join('');
 function askPw(c){return new Promise(res=>{$('ov').innerHTML=`<div class="sec"><b>Admin sign in</b><label for="lp">Password</label><input id="lp" type="password" autocomplete="current-password"><div class="acts"><button class="btn" id="lb">Unlock</button><button class="btn alt" id="lc">Cancel</button></div><p class="mut" id="lm"></p></div>`;
 const go=async()=>{let good=false;try{good=(await sha((c.salt||'')+$('lp').value))===c.pw}catch(e){}if(good)res(true);else{$('lm').textContent='Wrong password.';$('lp').value=''}};
 $('lb').onclick=go;$('lp').onkeydown=e=>{if(e.key==='Enter')go()};$('lc').onclick=()=>res(false);$('lp').focus()})}
+const pwBox=()=>`<div class="sec"><b>Admin password</b><p class="mut">${DB.pw?'A password is set. Enter a new one to change it.':'No password is set yet, so anyone who opens the #admin address can get into the admin screens.'}</p><label for="c9">New admin password</label><input id="c9" type="password" autocomplete="new-password"><div class="acts"><button class="btn" onclick="setPw()">Save password</button></div></div>`;
+async function setPw(){const pw=$('c9').value;if(!pw)return;const salt=Math.random().toString(36).slice(2)+Date.now().toString(36);DB.salt=salt;DB.pw=await sha(salt+pw);save();alert('Password saved. It only takes effect on the live site after you download data.json and upload it to GitHub.')}
 async function boot(){$('ov').innerHTML='<p class="mut">Loading\u2026</p>';
-try{const r=await fetch('data.json?'+Date.now(),{cache:'no-store'}),j=await r.json();if(j&&j.cfg)S=j}catch(e){}
-S.rev=S.rev||0;BASE=S.rev;const c=S.cfg;let ok=false;
+try{const r=await fetch('data.json?'+Date.now(),{cache:'no-store'});DB=norm(await r.json())}catch(e){DB=norm(null)}
+BASE=DB.rev||0;let ok=false;
 try{ok=sessionStorage.getItem('ch_unlock')==='1'}catch(e){}
-if(!ok&&WANT)ok=c.pw?await askPw(c):true;
+if(!ok&&WANT)ok=DB.pw?await askPw(DB):true;
 if(ok){ADMIN=true;try{sessionStorage.setItem('ch_unlock','1')}catch(e){}}
-try{const d=JSON.parse(localStorage.getItem('ch_draft')||'null');if(ADMIN&&d&&d.cfg&&d.rev>S.rev)S=d}catch(e){}
-start()}
+try{const d=JSON.parse(localStorage.getItem('ch_draft')||'null');if(ADMIN&&d){const n=norm(d);if(n.rev>DB.rev)DB=n}}catch(e){}
+selectCur();start()}
 boot();
 </script></body></html>
