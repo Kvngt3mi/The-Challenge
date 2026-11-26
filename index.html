@@ -3,6 +3,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%88%3C/text%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Figtree:wght@400;600&display=swap" rel="stylesheet">
+<script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -42,6 +43,7 @@ input,select,textarea{width:100%;box-sizing:border-box;padding:11px;border:1px s
 .fmt{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:12px;color:#fff;font-size:.9rem}.fmt label{display:flex;align-items:center;gap:6px;margin:0;color:#fff}.fmt input{width:auto}
 .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.cal .wd{text-align:center;font-size:.75rem;color:var(--mut)}.cd{min-height:54px;border:1px solid var(--ln);border-radius:8px;background:none;color:var(--ink);font:inherit;padding:4px 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}.cd span{font-size:.8rem;color:var(--mut)}.cd b{font:700 .72rem 'Bricolage Grotesque',sans-serif}.cd.w{background:rgba(13,138,85,.16)}.cd.w b{color:var(--up)}.cd.l{background:rgba(207,63,44,.14)}.cd.l b{color:var(--dn)}.cd.sel{outline:2px solid var(--ac)}
 .stg{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}.stg span{padding:6px 12px;border-radius:99px;border:1px solid var(--ln);font-size:.82rem;color:var(--mut)}.stg span.on{background:var(--ac);color:var(--bg);border-color:var(--ac);font-weight:600}.stg span.ok{color:var(--up);border-color:var(--up)}
+.seg{display:flex;gap:6px;margin-bottom:12px}.seg button{flex:1;padding:10px;border:1px solid var(--ln);border-radius:10px;background:none;color:var(--ink);font:600 .9rem Figtree,system-ui,sans-serif;cursor:pointer}.seg button.on{background:var(--ac);color:var(--bg);border-color:var(--ac)}.run{color:var(--up);font-weight:600;font-size:.82rem}
 #cp{margin:0 0 12px}#cp select{width:auto;max-width:100%;margin-right:8px}
 .pub{position:sticky;top:env(safe-area-inset-top,0px);z-index:5}.pub .sec{display:flex;justify-content:space-between;align-items:center;gap:10px;border-color:var(--ac)}
 .risk{border-width:2px;font-weight:600}.risk.dn{border-color:var(--dn);color:var(--dn)}.risk.am{border-color:#d99a1c;color:#b97f0c}
@@ -87,11 +89,15 @@ if(j&&j.cfg){const c=Object.assign({},j.cfg,{type:'instant',name:j.cfg.name||'Tr
 return{rev:0,cur:'',challenges:[]}}
 function pickS(){S=DB.challenges.find(x=>x.id===DB.cur)||DB.challenges[0]||S0;DB.cur=S.id}
 function selectCur(){let cur='';try{cur=sessionStorage.getItem('ch_cur')||''}catch(e){}if(cur&&DB.challenges.find(x=>x.id===cur))DB.cur=cur;pickS()}
-const save=()=>{DB.rev=Math.max(DB.rev||0,BASE)+1;try{localStorage.setItem('ch_draft',JSON.stringify(DB))}catch(e){alert('This browser could not keep a draft. Make sure your changes reach the live site soon.')}pubbar()};
-const PLAT='gh',CAN_IMG=true,LIVEMSG='Changes stay in this browser until you download data.json and upload it to GitHub. Friends only see what is on the live site.';
+const save=()=>{DB.rev=Math.max(DB.rev||0,BASE)+1;try{localStorage.setItem('ch_draft',JSON.stringify(DB))}catch(e){alert('This browser could not keep a draft. Make sure your changes reach the live site soon.')}pubbar();if(typeof onSave==='function')onSave()};
+const SBC=window.SB_CONFIG||{},SBU=(SBC.url||'').replace(/\/$/,''),SBK=SBC.key||'',SB=!!(SBU&&SBK);
+const PLAT='gh',CAN_IMG=true,LIVEMSG=SB?'Changes save to Supabase automatically.':'Changes stay in this browser until you download data.json and upload it to GitHub. Friends only see what is on the live site.';
 const WANT=location.hash==='#admin';try{localStorage.removeItem('ch_admin')}catch(e){}
-async function saveImg(f){const bl=await shrink(f);return new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(bl)})}
-const imgUrl=v=>v;
+let SBS=null,SBSTAT='',sbT=0;
+const sbh=(tok,x)=>Object.assign({apikey:SBK,Authorization:'Bearer '+(tok||SBK)},x||{});
+const toData=bl=>new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(bl)});
+async function saveImg(f){const bl=await shrink(f);if(!SB)return toData(bl);const tok=await sbTok(),name=S.id+'-'+Date.now()+'.jpg',r=await fetch(SBU+'/storage/v1/object/challenge-charts/'+name,{method:'POST',headers:sbh(tok,{'Content-Type':'image/jpeg'}),body:bl});if(!r.ok)throw new Error('upload '+r.status);return name}
+const imgUrl=v=>(!SB||/^(data:|http)/.test(v))?v:SBU+'/storage/v1/object/public/challenge-charts/'+v;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const N=n=>(n<0?'−':'')+'₦'+Math.abs(Math.round(n)).toLocaleString('en-NG');
@@ -105,7 +111,7 @@ const fd=d=>new Date(d+'T00:00').toLocaleDateString('en-GB',{weekday:'short',day
 let lastDate=today(),selDay='';
 function stages(ch){const c=ch.cfg,f={kind:c.type==='broker'?'broker':'funded',label:c.type==='broker'?'Account':'Funded',ml:c.maxLoss||0,dl:c.dl||0,md:0,t:0,split:c.type==='broker'?100:(c.split||100),target:c.target||0};
 if(c.type!=='phases')return[f];const r=[];for(let i=0;i<(c.phases||2);i++){const x=(c.rules||[])[i]||{};r.push({kind:'eval',label:'Phase '+(i+1),ml:x.ml||0,dl:x.dl||0,md:x.md||0,t:x.t||0,split:0,target:0})}return r.concat(f)}
-function stats(){const c=S.cfg,sg=stages(S),stg=Math.min(S.stage||0,sg.length-1),R=sg[stg],t=S.trades.filter(x=>(x.st||0)===stg).sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id),m={};
+function stats(){const c=S.cfg,sg=stages(S),stg=Math.min(S.stage||0,sg.length-1),R=sg[stg],t=S.trades.filter(x=>!x.open&&(x.st||0)===stg).sort((a,b)=>a.date.localeCompare(b.date)||a.id-b.id),m={};
 t.forEach(x=>(m[x.date]=m[x.date]||[]).push(x));
 let bal=c.size;const pts=[c.size],dl=Object.keys(m).sort().map(d=>{const p=m[d].reduce((a,x)=>a+x.pl,0);bal+=p;pts.push(bal);return{d,p,bal,t:m[d]}});
 const lossAmt=c.size*(R.ml||100)/100,floor=c.size-lossAmt,pl=bal-c.size,w=t.filter(x=>x.pl>0).length,goal=R.kind==='eval'?c.size*R.t/100:(R.split&&R.target?R.target/(R.split/100):0);
@@ -121,7 +127,7 @@ const s=stats(),c=s.c;
 if(!selDay||!s.dl.find(x=>x.d===selDay))selDay=s.dl.length?s.dl[s.dl.length-1].d:'';
 $('ov').innerHTML=`${stageBar(s)}${riskBar(s)}${passBox(s)}<div class="sec"><div class="lb">Account balance</div><div class="big">${N(s.bal)}</div>
 <div class="${s.pl>=0?'up':'dn'}">${P(s.pl)} (${(s.pl/c.size*100).toFixed(2)}%)</div>${curve(s.pts,'var(--ac)')}</div>
-${goalBox(s)}${lossBox(s)}
+${runPub()}${goalBox(s)}${lossBox(s)}
 ${pace(s)}<div class="sec grid"><div><div class="lb">Trades</div><div class="num">${s.t.length}</div></div><div><div class="lb">Win rate</div><div class="num">${s.wr}%</div></div>
 <div><div class="lb">Days traded</div><div class="num">${s.dl.length}${c.days?' / '+c.days:''}</div></div><div><div class="lb">Best day</div><div class="num up">${P(s.best)}</div></div>
 <div><div class="lb">Worst day</div><div class="num ${s.worst>=0?'up':'dn'}">${P(s.worst)}</div></div><div><div class="lb">Green streak</div><div class="num">${s.streak} day${s.streak===1?'':'s'}</div></div></div>${insights(s)}${milestones(s)}
@@ -131,17 +137,44 @@ ${pace(s)}<div class="sec grid"><div><div class="lb">Trades</div><div class="num
 <div class="sec days"><b>Daily results</b>${s.dl.slice().reverse().map(x=>`<button onclick="selDay='${x.d}';overview();window.scrollTo(0,0)"><span>${fd(x.d)} <span class="mut">${x.t.length} trade${x.t.length>1?'s':''}</span></span><b class="${x.p>=0?'up':'dn'}">${P(x.p)}</b></button>`).join('')||'<p class="mut">No trades yet. Add the first one under Add trades.</p>'}</div>`}
 function admin(){if(!DB.challenges.length){$('ad').innerHTML='<div class="sec"><p class="mut">Create a challenge in the Challenges tab first.</p></div>';return}
 const s=stats();
-$('ad').innerHTML=`<div class="sec"><b>Add a trade${s.sg.length>1?' ('+s.R.label+')':''}</b>
-<div class="two"><div><label for="fd">Date</label><input id="fd" type="date" value="${lastDate}"></div><div><label for="fp">Pair</label><input id="fp" placeholder="XAUUSD" autocapitalize="characters"></div></div>
-<div class="two"><div><label for="fs">Direction</label><select id="fs"><option>Buy</option><option>Sell</option></select></div><div><label for="fr">Result</label><select id="fr"><option value="1">Profit</option><option value="-1">Loss</option></select></div></div>
-<label for="fa">Amount (₦)</label><input id="fa" type="number" inputmode="decimal" min="0" placeholder="25000">
-<label for="fn">Reason for the trade (optional)</label><input id="fn" placeholder="Breakout on the 15-minute chart">
-<label for="ft">Trade type</label><select id="ft"><option>Followed plan</option><option>Broke rules</option><option>Revenge trade</option><option>News trade</option></select>
-${CAN_IMG?`<label for="fi">Chart screenshot (optional)</label><input id="fi" type="file" accept="image/*">`:''}
-<div class="acts"><button class="btn" onclick="addTrade()">Save trade</button></div><p class="mut" id="msg"></p></div>
+$('ad').innerHTML=`${runAdmin(s)}${tradeForm(s)}
 <div class="sec"><b>All trades</b>${s.t.slice().reverse().map(x=>`<div class="tr"><span>${fd(x.date)} · ${esc(x.pair)} ${x.side}<br><span class="mut">${esc(x.tag||'')}${x.img?', chart attached':''} ${esc(x.note||'')}</span></span><span><b class="${x.pl>=0?'up':'dn'}">${P(x.pl)}</b> <button onclick="delTrade(${x.id})" aria-label="Delete trade">Delete</button></span></div>`).join('')||'<p class="mut">Nothing logged yet.</p>'}</div>
 <div class="sec"><b>Backup</b><p class="mut">${LIVEMSG} Copy this text somewhere safe, and paste it back here to restore.</p>
 <textarea id="bk" rows="4">${esc(JSON.stringify(DB))}</textarea><div class="acts"><button class="btn alt" onclick="restore()">Restore from text</button></div></div>`}
+let admMode='closed',closing=0;
+const runs=()=>S.trades.filter(x=>x.open&&(x.st||0)===(S.stage||0));
+function runCard(x,adm){const lv=[x.entry?'entry '+esc(x.entry):'',x.sl?'stop '+esc(x.sl):'',x.tp?'target '+esc(x.tp):''].filter(Boolean).join(', ');
+return`<div class="tr" style="flex-wrap:wrap"><span><b>${esc(x.pair)}</b> <span class="mut">${x.side}</span><br><span class="mut">Opened ${fd(x.date)}${lv?', '+lv:''}</span>${x.note?`<br><span class="mut">${esc(x.note)}</span>`:''}</span>${adm?`<span><button class="btn alt" onclick="closing=${x.id};admin();window.scrollTo(0,0)">Close trade</button> <button onclick="delTrade(${x.id})" aria-label="Cancel trade">Cancel</button></span>`:'<span class="run">Running</span>'}${x.img?`<img src="${imgUrl(x.img)}" alt="Chart for ${esc(x.pair)}" style="width:100%;border-radius:10px;margin-top:6px">`:''}</div>`}
+function runPub(){const r=runs();return r.length?`<div class="sec"><b>Running trades</b>${r.map(x=>runCard(x,false)).join('')}</div>`:''}
+function runAdmin(){const r=runs();return closeBox()+`<div class="sec"><b>Running trades</b>${r.length?r.map(x=>runCard(x,true)).join(''):'<p class="mut">No running trades right now.</p>'}</div>`}
+function closeBox(){const x=S.trades.find(y=>y.id===closing&&y.open);if(!x)return'';return`<div class="sec" style="border-color:var(--ac)"><b>Close ${esc(x.pair)} ${x.side}</b>
+<div class="two"><div><label for="cd1">Closed on</label><input id="cd1" type="date" value="${today()}"></div><div><label for="cr">How did it end?</label><select id="cr" onchange="$('cm').style.display=this.value==='man'?'block':'none'"><option value="tp">Hit target</option><option value="sl">Hit stop loss</option><option value="man">Closed manually</option></select></div></div>
+<div id="cm" style="display:none"><label for="cs2">Profit or loss</label><select id="cs2"><option value="1">Profit</option><option value="-1">Loss</option></select></div>
+<label for="ca">Amount (₦)</label><input id="ca" type="number" inputmode="decimal" min="0" placeholder="25000">
+<label for="cn">Result notes (optional)</label><input id="cn" placeholder="What happened?">
+<label for="ct">Trade type</label><select id="ct"><option>Followed plan</option><option>Broke rules</option><option>Revenge trade</option><option>News trade</option></select>
+${CAN_IMG?`<label for="ci">Result chart screenshot (optional)</label><input id="ci" type="file" accept="image/*">`:''}
+<div class="acts"><button class="btn" onclick="closeTrade()">Save result</button><button class="btn alt" onclick="closing=0;admin()">Cancel</button></div><p class="mut" id="cmsg"></p></div>`}
+function tradeForm(s){const run=admMode==='run';
+return`<div class="sec"><div class="seg"><button class="${run?'':'on'}" onclick="admMode='closed';admin()">Closed trade</button><button class="${run?'on':''}" onclick="admMode='run';admin()">Running trade</button></div><b>${run?'Add a running trade':'Add a trade'}${s.sg.length>1?' ('+s.R.label+')':''}</b>
+<div class="two"><div><label for="fd">${run?'Opened on':'Date'}</label><input id="fd" type="date" value="${lastDate}"></div><div><label for="fp">Pair</label><input id="fp" placeholder="XAUUSD" autocapitalize="characters"></div></div>
+<div class="two"><div><label for="fs">Direction</label><select id="fs"><option>Buy</option><option>Sell</option></select></div>${run?`<div><label for="fe">Entry price (optional)</label><input id="fe" inputmode="decimal"></div>`:`<div><label for="fr">Result</label><select id="fr"><option value="1">Profit</option><option value="-1">Loss</option></select></div>`}</div>
+${run?`<div class="two"><div><label for="fsl">Stop loss (optional)</label><input id="fsl" inputmode="decimal"></div><div><label for="ftp">Target (optional)</label><input id="ftp" inputmode="decimal"></div></div>`:`<label for="fa">Amount (₦)</label><input id="fa" type="number" inputmode="decimal" min="0" placeholder="25000">`}
+<label for="fn">Reason for the trade (optional)</label><input id="fn" placeholder="Breakout on the 15-minute chart">
+${run?'':`<label for="ft">Trade type</label><select id="ft"><option>Followed plan</option><option>Broke rules</option><option>Revenge trade</option><option>News trade</option></select>`}
+${CAN_IMG?`<label for="fi">Chart screenshot (optional)</label><input id="fi" type="file" accept="image/*">`:''}
+<div class="acts"><button class="btn" onclick="${run?'addRun()':'addTrade()'}">${run?'Save running trade':'Save trade'}</button></div><p class="mut" id="msg"></p></div>`}
+async function addRun(){const p=$('fp').value.trim().toUpperCase();if(!p){$('msg').textContent='Enter the pair first.';return}
+let img='';const f=$('fi')&&$('fi').files[0];
+if(f&&CAN_IMG){$('msg').textContent='Uploading screenshot…';try{img=await saveImg(f)}catch(e){if(!confirm('The screenshot could not be uploaded. Save the trade without it?'))return}}
+lastDate=$('fd').value||today();S.trades.push({id:Date.now(),open:true,date:lastDate,pair:p,side:$('fs').value,entry:$('fe').value.trim(),sl:$('fsl').value.trim(),tp:$('ftp').value.trim(),note:$('fn').value.trim(),img,st:S.stage||0});
+save();admin();overview();$('msg').textContent='Running trade saved. Close it here when it hits target or stop loss.'}
+async function closeTrade(){const x=S.trades.find(y=>y.id===closing);if(!x)return;const a=parseFloat($('ca').value);
+if(!(a>=0)||$('ca').value===''){$('cmsg').textContent='Enter the amount made or lost.';return}
+const res=$('cr').value,sg=res==='tp'?1:res==='sl'?-1:parseInt($('cs2').value);let img2='';const f=$('ci')&&$('ci').files[0];
+if(f&&CAN_IMG){$('cmsg').textContent='Uploading screenshot…';try{img2=await saveImg(f)}catch(e){if(!confirm('The screenshot could not be uploaded. Save the result without it?'))return}}
+x.od=x.date;x.date=$('cd1').value||today();x.pl=a*sg;x.res=res;x.cnote=$('cn').value.trim();x.tag=$('ct').value;if(img2)x.img2=img2;delete x.open;closing=0;lastDate=x.date;
+save();admin();overview();const u=stats().used,m=$('msg');if(m)m.textContent='Result saved.'+(u>=75?' Warning: '+Math.round(u)+'% of the loss limit is used.':'')}
 async function shrink(f){const b=await createImageBitmap(f),k=Math.min(1,900/Math.max(b.width,b.height)),c=document.createElement('canvas');c.width=b.width*k;c.height=b.height*k;c.getContext('2d').drawImage(b,0,0,c.width,c.height);return new Promise(r=>c.toBlob(r,'image/jpeg',.6))}
 async function addTrade(){const a=parseFloat($('fa').value),p=$('fp').value.trim().toUpperCase();
 if(!p||!(a>=0)||$('fa').value===''){$('msg').textContent='Enter the pair and the amount before saving.';return}
@@ -194,7 +227,7 @@ if(kind==='day'){const i=s.dl.findIndex(y=>y.d===selDay),x=s.dl[i];if(!x){alert(
 const n=dayNo(s,x.d),pts=[c.size].concat(s.dl.slice(0,i+1).map(y=>y.bal)),w=x.t.filter(t=>t.pl>0).length,prev=x.bal-x.p,up=x.p>=0;
 sub=c.days&&n>0?`Day ${n} of ${c.days}, ${fd(x.d)}`:fd(x.d);
 h=pcHead(fd(x.d),c.days&&n>0?`DAY ${n}/${c.days}`:`DAY ${i+1}`)+`<div class="lab">Day result</div><div class="hero ${up?'g':'r'}">${P(x.p)}</div><div class="sub ${up?'g':'r'}">${prev?(x.p/prev*100).toFixed(2):'0.00'}% on the account</div>${pcurve(pts,up)}
-<div class="tk">${x.t.map(t=>`<div><span>${esc(t.pair)}<span class="chip">${t.side.toUpperCase()}</span>${t.tag?`<span class="chip">${esc(t.tag)}</span>`:''}</span><b class="${t.pl>=0?'g':'r'}">${P(t.pl)}</b></div>`).join('')}</div>
+<div class="tk">${x.t.map(t=>`<div><span>${esc(t.pair)}<span class="chip">${t.side.toUpperCase()}</span>${t.res==='tp'?'<span class="chip">TARGET</span>':t.res==='sl'?'<span class="chip">STOP LOSS</span>':''}${t.tag?`<span class="chip">${esc(t.tag)}</span>`:''}</span><b class="${t.pl>=0?'g':'r'}">${P(t.pl)}</b></div>`).join('')}</div>
 <div class="st">${st(N(x.bal),'Balance')}${st(P(x.bal-c.size),'Total profit')}${st(w+'/'+x.t.length,'Wins')}</div>${pcProg(s,x.bal)}${pcFoot()}`;
 TXT=`${cname()}, ${sub}: ${P(x.p)}. Balance ${N(x.bal)}, total profit ${P(x.bal-c.size)}.`}
 else if(kind==='ms'){const m=mstones(s)[ix];if(!m)return;sub=fd(m.d);const pts=[c.size].concat(s.dl.filter(y=>y.d<=m.d).map(y=>y.bal));
@@ -227,7 +260,7 @@ if(R.kind==='eval'){const md=R.md||0;return`<div class="sec"><div class="row"><b
 return`<div class="sec"><div class="row"><b>${c.type==='broker'?'Profit goal':'Withdrawal progress'}</b><span class="num">${N(c.type==='broker'?Math.max(0,s.pl):s.pay)}</span></div>${bar(c.target?s.pay/c.target*100:0,'var(--up)')}<div class="mut">Target ${N(c.target)}${R.split<100?', estimated at a '+R.split+'% profit split':''}</div></div>`}
 function lossBox(s){const R=s.R;return`<div class="sec"><div class="row"><b>Loss limit</b><span class="num">${R.ml?N(Math.max(0,s.bal-s.floor))+' left':'No limit'}</span></div>${bar(R.ml?s.used:0,s.used>70?'var(--dn)':'var(--ac)')}<div class="mut">${R.ml?'Breaks below '+N(s.floor)+' ('+R.ml+'% of '+N(s.c.size)+')':'No maximum loss rule'}${R.dl?'. Daily loss limit '+R.dl+'% ('+N(s.c.size*R.dl/100)+')':''}</div></div>`}
 function passBox(s){if(!ADMIN||s.R.kind!=='eval'||!s.goal||s.pl<s.goal)return'';const md=s.R.md||0;return`<div class="sec risk" style="border-color:var(--up);color:var(--ink)"><div class="row"><span><b>${s.R.label} target reached.</b>${md&&s.dl.length<md?' Minimum trading days not met yet ('+s.dl.length+' of '+md+').':''}</span><button class="btn" onclick="passPhase()">Pass phase</button></div></div>`}
-function passPhase(){const s=stats();if(!confirm('Pass '+s.R.label+' and start the next stage with a fresh account?'))return;S.passed=(S.passed||[]).concat({st:s.stg,date:today(),bal:s.bal});S.stage=s.stg+1;selDay='';save();start()}
+function passPhase(){const s=stats();if(runs().length){alert('Close or cancel your running trades before passing the phase.');return}if(!confirm('Pass '+s.R.label+' and start the next stage with a fresh account?'))return;S.passed=(S.passed||[]).concat({st:s.stg,date:today(),bal:s.bal});S.stage=s.stg+1;selDay='';save();start()}
 function riskBar(s){const u=s.used,R=s.R;if(!s.t.length)return'';let m='',cl='';
 const dlim=R.dl?s.c.size*R.dl/100:0,ld=s.dl[s.dl.length-1],dbr=dlim&&ld&&ld.p<0&&-ld.p>=dlim;
 if(R.ml&&s.bal<=s.floor){m='Loss limit breached. The account is below '+N(s.floor)+'.';cl='dn'}
@@ -271,24 +304,39 @@ const x=mp[cd];
 $('cl').innerHTML=`<div class="sec"><div class="row"><button class="btn alt" onclick="mv(-1)" aria-label="Previous month">Prev</button><b class="num">${new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'})}</b><button class="btn alt" onclick="mv(1)" aria-label="Next month">Next</button></div>
 <p class="mut">${td} trading day${td===1?'':'s'}, <b class="${tot>=0?'up':'dn'}">${P(tot)}</b> this month</p>
 <div class="cal">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(w=>`<div class="wd">${w}</div>`).join('')}${cells}</div></div>
-<div class="sec"><b>${cd?fd(cd):'Pick a day'}</b>${x?x.t.map(t=>`<div class="tr" style="flex-wrap:wrap"><span>${esc(t.pair)} ${t.side}<br><span class="mut">${esc(t.tag||'')} ${esc(t.note||'')}</span></span><b class="${t.pl>=0?'up':'dn'}">${P(t.pl)}</b>${t.img?`<img src="${imgUrl(t.img)}" alt="Chart for ${esc(t.pair)}" style="width:100%;border-radius:10px;margin-top:6px">`:''}</div>`).join('')+`<div class="tr"><span class="mut">Day total</span><b class="${x.p>=0?'up':'dn'}">${P(x.p)}</b></div>`:`<p class="mut">${cd?'No trades on this day.':'Tap a day on the calendar to see its trades.'}</p>`}</div>`}
+<div class="sec"><b>${cd?fd(cd):'Pick a day'}</b>${x?x.t.map(t=>`<div class="tr" style="flex-wrap:wrap"><span>${esc(t.pair)} ${t.side}<br><span class="mut">${t.res==='tp'?'Hit target. ':t.res==='sl'?'Hit stop loss. ':''}${esc(t.tag||'')} ${esc(t.note||'')} ${esc(t.cnote||'')}</span></span><b class="${t.pl>=0?'up':'dn'}">${P(t.pl)}</b>${t.img?`<img src="${imgUrl(t.img)}" alt="Chart for ${esc(t.pair)}" style="width:100%;border-radius:10px;margin-top:6px">`:''}${t.img2?`<img src="${imgUrl(t.img2)}" alt="Result chart for ${esc(t.pair)}" style="width:100%;border-radius:10px;margin-top:6px">`:''}</div>`).join('')+`<div class="tr"><span class="mut">Day total</span><b class="${x.p>=0?'up':'dn'}">${P(x.p)}</b></div>`:`<p class="mut">${cd?'No trades on this day.':'Tap a day on the calendar to see its trades.'}</p>`}</div>`}
 function mv(n){const[y,m]=cm.split('-').map(Number),d=new Date(y,m-1+n,1);cm=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');calendar()}
 function start(){head();nav();pubbar();let t='ov';try{t=sessionStorage.getItem('ch_tab')||'ov'}catch(e){}tab(t)}
-function pubbar(){$('pb').innerHTML=ADMIN&&DB.rev>BASE?`<div class="pub"><div class="sec"><span>You have changes that are not on the live site yet.</span><button class="btn" onclick="exportData()">Download data.json</button></div></div>`:''}
+async function sbLogin(email,pw){const r=await fetch(SBU+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:SBK,'Content-Type':'application/json'},body:JSON.stringify({email,password:pw})}),j=await r.json();
+if(!r.ok)throw new Error(j.error_description||j.msg||'Sign in failed.');SBS={t:j.access_token,r:j.refresh_token,exp:Date.now()+(j.expires_in||3600)*1000-60000};try{sessionStorage.setItem('sb_s',JSON.stringify(SBS))}catch(e){}}
+async function sbTok(){if(!SBS)throw new Error('Not signed in.');if(Date.now()>SBS.exp){const r=await fetch(SBU+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:SBK,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:SBS.r})}),j=await r.json();
+if(!r.ok)throw new Error('Session expired. Sign in again.');SBS={t:j.access_token,r:j.refresh_token,exp:Date.now()+(j.expires_in||3600)*1000-60000};try{sessionStorage.setItem('sb_s',JSON.stringify(SBS))}catch(e){}}return SBS.t}
+async function sbLoad(){const r=await fetch(SBU+'/rest/v1/challenge_state?id=eq.1&select=data',{headers:sbh()});if(!r.ok)throw new Error('Could not load ('+r.status+')');const j=await r.json();return j[0]?j[0].data:null}
+function onSave(){if(!SB||!ADMIN)return;SBSTAT='saving';pubbar();clearTimeout(sbT);sbT=setTimeout(sbPush,700)}
+async function sbPush(){SBSTAT='saving';pubbar();try{const tok=await sbTok(),r=await fetch(SBU+'/rest/v1/challenge_state?on_conflict=id',{method:'POST',headers:sbh(tok,{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify({id:1,data:DB,updated_at:new Date().toISOString()})});
+if(!r.ok)throw new Error(((await r.text())||'status '+r.status).slice(0,160));BASE=DB.rev;SBSTAT=''}catch(e){SBSTAT='err:'+(e.message||e)}pubbar()}
+function sbOut(){try{sessionStorage.removeItem('sb_s')}catch(e){}location.hash='';location.reload()}
+function pubbar(){if(SB){$('pb').innerHTML=!ADMIN?'':SBSTAT==='saving'?'<div class="pub"><div class="sec"><span>Saving to Supabase\u2026</span></div></div>':SBSTAT.startsWith('err')?`<div class="pub"><div class="sec"><span>Could not save: ${esc(SBSTAT.slice(4))}</span><button class="btn" onclick="sbPush()">Retry</button></div></div>`:'';return}
+$('pb').innerHTML=ADMIN&&DB.rev>BASE?`<div class="pub"><div class="sec"><span>You have changes that are not on the live site yet.</span><button class="btn" onclick="exportData()">Download data.json</button></div></div>`:''}
 function exportData(){const b=new Blob([JSON.stringify(DB,null,1)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='data.json';document.body.appendChild(a);a.click();a.remove();alert('Now upload data.json to your GitHub repository and replace the old one. The live site updates in about a minute.')}
 const sha=async t=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t)))].map(b=>b.toString(16).padStart(2,'0')).join('');
 function askPw(c){return new Promise(res=>{$('ov').innerHTML=`<div class="sec"><b>Admin sign in</b><label for="lp">Password</label><input id="lp" type="password" autocomplete="current-password"><div class="acts"><button class="btn" id="lb">Unlock</button><button class="btn alt" id="lc">Cancel</button></div><p class="mut" id="lm"></p></div>`;
 const go=async()=>{let good=false;try{good=(await sha((c.salt||'')+$('lp').value))===c.pw}catch(e){}if(good)res(true);else{$('lm').textContent='Wrong password.';$('lp').value=''}};
 $('lb').onclick=go;$('lp').onkeydown=e=>{if(e.key==='Enter')go()};$('lc').onclick=()=>res(false);$('lp').focus()})}
-const pwBox=()=>`<div class="sec"><b>Admin password</b><p class="mut">${DB.pw?'A password is set. Enter a new one to change it.':'No password is set yet, so anyone who opens the #admin address can get into the admin screens.'}</p><label for="c9">New admin password</label><input id="c9" type="password" autocomplete="new-password"><div class="acts"><button class="btn" onclick="setPw()">Save password</button></div></div>`;
+function askLogin(){return new Promise(res=>{$('ov').innerHTML=`<div class="sec"><b>Admin sign in</b><label for="le">Email</label><input id="le" type="email" autocomplete="username"><label for="lp">Password</label><input id="lp" type="password" autocomplete="current-password"><div class="acts"><button class="btn" id="lb">Sign in</button><button class="btn alt" id="lc">Cancel</button></div><p class="mut" id="lm"></p></div>`;
+const go=async()=>{$('lm').textContent='Signing in\u2026';try{await sbLogin($('le').value.trim(),$('lp').value);res(true)}catch(e){$('lm').textContent=e.message||'Sign in failed.';$('lp').value=''}};
+$('lb').onclick=go;$('lp').onkeydown=e=>{if(e.key==='Enter')go()};$('lc').onclick=()=>res(false);$('le').focus()})}
+const pwBox=()=>SB?`<div class="sec"><b>Admin access</b><p class="mut">You are signed in with Supabase. Changes save automatically.</p><div class="acts"><button class="btn alt" onclick="sbOut()">Sign out</button></div></div>`:`<div class="sec"><b>Admin password</b><p class="mut">${DB.pw?'A password is set. Enter a new one to change it.':'No password is set yet, so anyone who opens the #admin address can get into the admin screens.'}</p><label for="c9">New admin password</label><input id="c9" type="password" autocomplete="new-password"><div class="acts"><button class="btn" onclick="setPw()">Save password</button></div></div>`;
 async function setPw(){const pw=$('c9').value;if(!pw)return;const salt=Math.random().toString(36).slice(2)+Date.now().toString(36);DB.salt=salt;DB.pw=await sha(salt+pw);save();alert('Password saved. It only takes effect on the live site after you download data.json and upload it to GitHub.')}
 async function boot(){$('ov').innerHTML='<p class="mut">Loading\u2026</p>';
-try{const r=await fetch('data.json?'+Date.now(),{cache:'no-store'});DB=norm(await r.json())}catch(e){DB=norm(null)}
+try{if(SB)DB=norm(await sbLoad());else{const r=await fetch('data.json?'+Date.now(),{cache:'no-store'});DB=norm(await r.json())}}catch(e){DB=norm(null)}
 BASE=DB.rev||0;let ok=false;
-try{ok=sessionStorage.getItem('ch_unlock')==='1'}catch(e){}
-if(!ok&&WANT)ok=DB.pw?await askPw(DB):true;
-if(ok){ADMIN=true;try{sessionStorage.setItem('ch_unlock','1')}catch(e){}}
+if(SB){try{SBS=JSON.parse(sessionStorage.getItem('sb_s')||'null')}catch(e){}ok=!!SBS;if(!ok&&WANT)ok=await askLogin()}
+else{try{ok=sessionStorage.getItem('ch_unlock')==='1'}catch(e){}if(!ok&&WANT)ok=DB.pw?await askPw(DB):true;if(ok){try{sessionStorage.setItem('ch_unlock','1')}catch(e){}}}
+if(ok)ADMIN=true;
 try{const d=JSON.parse(localStorage.getItem('ch_draft')||'null');if(ADMIN&&d){const n=norm(d);if(n.rev>DB.rev)DB=n}}catch(e){}
-selectCur();start()}
+selectCur();start();
+if(SB&&ADMIN&&DB.rev>BASE)onSave();
+if(SB&&!ADMIN)setInterval(async()=>{try{const n=norm(await sbLoad());if((n.rev||0)!==(DB.rev||0)){DB=n;BASE=n.rev||0;selectCur();start()}}catch(e){}},60000)}
 boot();
 </script></body></html>
